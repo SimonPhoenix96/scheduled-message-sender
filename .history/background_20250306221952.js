@@ -27,7 +27,7 @@ chrome.runtime.onInstalled.addListener(function() {
     chrome.storage.local.set({
       activeTabs: {},  // Object to track active tabs by tabId
       defaultInterval: 15,
-      defaultSelector: 'body > div > nav > div.flex.grow.items-center.justify-center.lg\:absolute.lg\:inset-x-96.lg\:inset-y-0 > div > div > input',
+      defaultSelector: '#chat-input-wrapper > div > div.editor-input > p',
       useLLM: false,
       llmProvider: 'openai',
       apiKey: '',
@@ -94,46 +94,13 @@ chrome.runtime.onInstalled.addListener(function() {
   });
   
   // Handle message generation requests
-// Handle message generation requests
-chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
+  chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     if (request.action === 'generateMessage') {
-      // First try to use the provided API key
-      let provider = request.provider;
-      let apiKey = request.apiKey;
-      let context = request.context;
-      
-      // If no API key provided, try to get from storage
-      if (!apiKey) {
-        chrome.storage.local.get([provider + 'Key', 'contextPrompt'], function(data) {
-          const storedKey = data[provider + 'Key'];
-          const storedContext = data.contextPrompt;
-          
-          if (storedKey) {
-            apiKey = storedKey;
-            console.log('Using stored API key for', provider);
-            
-            // Use stored context if none provided
-            if (!context && storedContext) {
-              context = storedContext;
-              console.log('Using stored context prompt');
-            }
-            
-            generateMessage(provider, apiKey, context).then(message => {
-              sendResponse({message: message});
-            }).catch(error => {
-              console.error('Error generating message:', error);
-              sendResponse({error: error.message || 'Failed to generate message'});
-            });
-          } else {
-            sendResponse({error: 'No API key found for ' + provider});
-          }
-        });
-        
-        return true; // Keep the message channel open for async response
-      }
-      
-      // If API key was provided directly, use it
-      generateMessage(provider, apiKey, context).then(message => {
+      generateMessage(
+        request.provider,
+        request.apiKey,
+        request.context
+      ).then(message => {
         sendResponse({message: message});
       }).catch(error => {
         console.error('Error generating message:', error);
@@ -144,57 +111,37 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     } else if (request.action === 'getNewMessage') {
       const tabId = sender.tab.id;
       
-      chrome.storage.local.get(['activeTabs', 'openaiKey', 'openrouterKey', 'contextPrompt'], function(data) {
-        if (data.activeTabs && data.activeTabs[tabId]) {
-          // Find the message that has useLLM set to true
-          const messageWithLLM = data.activeTabs[tabId].messages.find(msg => msg.useLLM);
+      chrome.storage.local.get('activeTabs', function(data) {
+        if (data.activeTabs && data.activeTabs[tabId] && data.activeTabs[tabId].llmSettings?.useLLM) {
+          const llmSettings = data.activeTabs[tabId].llmSettings;
           
-          if (messageWithLLM) {
-            // Get the provider from tab settings or default to openai
-            const provider = data.activeTabs[tabId].llmSettings?.provider || 'openai';
-            
-            // Try to get API key from tab settings, or fall back to stored keys
-            let apiKey = data.activeTabs[tabId].llmSettings?.apiKey;
-            if (!apiKey) {
-              apiKey = data[provider + 'Key'];
-            }
-            
-            // Try to get context from tab settings, or fall back to stored context
-            let context = data.activeTabs[tabId].llmSettings?.context;
-            if (!context) {
-              context = data.contextPrompt;
-            }
-            
-            if (apiKey) {
-              generateMessage(provider, apiKey, context).then(message => {
-                sendResponse({message: message});
-              }).catch(error => {
-                console.error('Error generating message:', error);
-                // Fall back to the message text
-                sendResponse({error: error.message, fallbackMessage: messageWithLLM.text});
-              });
-            } else {
-              console.error('No API key found for', provider);
-              sendResponse({error: 'No API key found', fallbackMessage: messageWithLLM.text});
-            }
-          } else {
-            // If no message has useLLM, just return the first message text
-            const savedMessage = data.activeTabs[tabId].messages?.[0]?.text || '';
-            sendResponse({message: savedMessage});
-          }
+          generateMessage(
+            llmSettings.provider,
+            llmSettings.apiKey,
+            llmSettings.context
+          ).then(message => {
+            sendResponse({message: message});
+          }).catch(error => {
+            console.error('Error generating message:', error);
+            // Fall back to one of the saved messages
+            const fallbackMessage = data.activeTabs[tabId].messages?.[0]?.text || '';
+            sendResponse({error: error.message, fallbackMessage: fallbackMessage});
+          });
         } else {
-          sendResponse({error: 'No active tab data found'});
+          // If LLM is not enabled, just return one of the saved messages
+          const savedMessage = data.activeTabs[tabId]?.messages?.[0]?.text || '';
+          sendResponse({message: savedMessage});
         }
       });
       
       return true; // Keep the message channel open for async response
     }
-    
-    if (request.action === 'showNotification') {
-      showNotification(request.title, request.message);
-      sendResponse({success: true});
-      return true;
-    }
+      // Add this new case
+  if (request.action === 'showNotification') {
+    showNotification(request.title, request.message);
+    sendResponse({success: true});
+    return true;
+  }
   });
   
   // Function to generate messages using LLM APIs

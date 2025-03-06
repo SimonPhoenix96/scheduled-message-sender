@@ -153,100 +153,68 @@
         background-color: #388e3c;
     }
 
-    .settings-panel {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background-color: white;
-        padding: 15px;
-        z-index: 100;
-        overflow-y: auto;
-    }
-    
-    .settings-btn {
-        background-color: #673ab7;
-        margin-left: 10px;
-    }
-    
-    .settings-btn:hover {
-        background-color: #5e35b1;
-    }
-
   </style>
 </head>
 <body>
-    <h2>Scheduled Message Sender</h2>
-    
-    <div id="streamerInfo" class="streamer-info">
-      Current Stream: Loading...
+  <h2>Scheduled Message Sender</h2>
+  
+  <div id="streamerInfo" class="streamer-info">
+    Current Stream: Loading...
+  </div>
+  
+  <div class="form-group checkbox-group">
+    <input type="checkbox" id="useLLM">
+    <label for="useLLM">Use AI to generate unique messages</label>
+  </div>
+  <div class="form-group checkbox-group">
+    <input type="checkbox" id="enableNotifications" checked>
+    <label for="enableNotifications">Show notifications when messages are posted</label>
+  </div>
+  <div id="messagesContainer">
+    <!-- Message containers will be added here dynamically -->
+  </div>
+  
+  <button id="addMessageBtn" class="add-message-btn">Add Message</button>
+  
+  <div id="llmSettingsGroup" class="llm-settings hidden">
+    <div class="form-group">
+      <label for="llmProvider">AI Provider:</label>
+      <select id="llmProvider">
+        <option value="openai">OpenAI</option>
+        <option value="openrouter">OpenRouter</option>
+      </select>
     </div>
     
-    <div class="form-group checkbox-group">
-      <input type="checkbox" id="enableNotifications" checked>
-      <label for="enableNotifications">Show notifications when messages are posted</label>
+    <div class="form-group">
+      <label for="apiKey">API Key:</label>
+      <input type="password" id="apiKey" placeholder="Enter your API key">
     </div>
     
-    <div id="messagesContainer">
-      <!-- Message containers will be added here dynamically -->
+    <div class="form-group">
+      <label for="contextPrompt">Context for Message Generation:</label>
+      <textarea id="contextPrompt" rows="3" placeholder="Example: This is a gaming stream for Minecraft. The streamer loves dad jokes."></textarea>
     </div>
-    
-    <button id="addMessageBtn" class="add-message-btn">Add Message</button>
-    <button id="settingsBtn" class="settings-btn">Settings</button>
-    
-    <div id="settingsPanel" class="settings-panel hidden">
-      <h3>API Settings</h3>
-      <div class="form-group">
-        <label for="openaiKey">OpenAI API Key:</label>
-        <input type="password" id="openaiKey" placeholder="Enter your OpenAI API key">
-      </div>
-      
-      <div class="form-group">
-        <label for="openrouterKey">OpenRouter API Key:</label>
-        <input type="password" id="openrouterKey" placeholder="Enter your OpenRouter API key">
-      </div>
-      
-      <div class="form-group">
-        <label for="contextPrompt">Default Context for Message Generation:</label>
-        <textarea id="contextPrompt" rows="3" placeholder="Example: This is a gaming stream for Minecraft. The streamer loves dad jokes."></textarea>
-      </div>
-
-      <div class="form-group">
-        <label for="llmProvider">AI Provider:</label>
-        <select id="llmProvider">
-          <option value="openai">OpenAI</option>
-          <option value="openrouter">OpenRouter</option>
-        </select>
-      </div>
-      
-      <div class="form-group">
-        <label for="apiKey">Current API Key:</label>
-        <input type="password" id="apiKey" placeholder="API key will be loaded based on selected provider">
-      </div>
-      
-      <button id="saveSettingsBtn">Save Settings</button>
-      <button id="closeSettingsBtn">Close</button>
+  </div>
+  
+  <div class="button-row">
+    <button id="toggleButton">Start Posting</button>
+    <button id="testButton" class="test-button">Test Input Only</button>
+  </div>
+  <div class="button-row">
+    <button id="testConnection" class="test-button">Test Connection</button>
+    <button id="generateMessage" class="test-button hidden">Generate Test Message</button>
+  </div>
+  <div id="status" class="status inactive">
+    Status: Inactive
+  </div>
+  
+  <div class="active-tabs-list">
+    <h3>Active Streams</h3>
+    <div id="activeTabsList">
+      <!-- Active tabs will be listed here -->
     </div>
-    
-    <div class="button-row">
-      <button id="toggleButton">Start Posting</button>
-      <button id="testButton" class="test-button">Test Input Only</button>
-    </div>
-    <div class="button-row">
-      <button id="testConnection" class="test-button">Test Connection</button>
-    </div>
-    <div id="status" class="status inactive">
-      Status: Inactive
-    </div>
-    
-    <div class="active-tabs-list">
-      <h3>Active Streams</h3>
-      <div id="activeTabsList">
-        <!-- Active tabs will be listed here -->
-      </div>
-    </div>
-    
-    <script src="popup.js"></script>
-  </body>
+  </div>
+  
+  <script src="popup.js"></script>
+</body>
 </html>

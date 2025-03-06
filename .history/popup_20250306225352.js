@@ -129,63 +129,73 @@ document.addEventListener('DOMContentLoaded', function() {
       streamerInfoDiv.textContent = 'Current Stream: ' + currentTabTitle;
       
       // Check if this tab is already active
-// Replace the section around line 133-168 with this improved logic
+// Replace the section around line 49-81 with this improved logic
 chrome.storage.local.get('activeTabs', function(data) {
     const activeTabs = data.activeTabs || {};
     
     if (activeTabs[currentTabId]) {
-      // Tab is active, update UI
-      toggleButton.textContent = 'Stop Posting';
-      toggleButton.className = 'stop';
-      statusDiv.textContent = 'Status: Active';
-      statusDiv.className = 'status active';
-      
-      // Load saved messages for this tab
-      if (activeTabs[currentTabId].messages && activeTabs[currentTabId].messages.length > 0) {
-        activeTabs[currentTabId].messages.forEach(message => {
-          // Make sure to pass the useLLM property
-          addMessageContainer(message.text, message.interval, message.selector, message.useLLM);
-        });
-      } else {
-        // No messages yet, add default container
-        addMessageContainer('', 15, '', false);
-      }
-      
-      // Load LLM settings if they exist
-      if (activeTabs[currentTabId].llmSettings) {
-        const llmSettings = activeTabs[currentTabId].llmSettings;
-        llmProviderSelect.value = llmSettings.provider;
-        apiKeyInput.value = llmSettings.apiKey;
-        contextPromptInput.value = llmSettings.context;
-      }
+        // Tab is active, update UI
+        toggleButton.textContent = 'Stop Posting';
+        toggleButton.className = 'stop';
+        statusDiv.textContent = 'Status: Active';
+        statusDiv.className = 'status active';
+        
+        // Load saved messages for this tab
+        if (activeTabs[currentTabId].messages && activeTabs[currentTabId].messages.length > 0) {
+            activeTabs[currentTabId].messages.forEach(message => {
+                addMessageContainer(message.text, message.interval, message.selector);
+            });
+        } else {
+            // No messages yet, add default container
+            addMessageContainer('', 15, '');
+        }
+        
+        // Load LLM settings if they exist
+        if (activeTabs[currentTabId].llmSettings) {
+            const llmSettings = activeTabs[currentTabId].llmSettings;
+            useLLMCheckbox.checked = llmSettings.useLLM;
+            llmProviderSelect.value = llmSettings.provider;
+            apiKeyInput.value = llmSettings.apiKey;
+            contextPromptInput.value = llmSettings.context;
+            
+            // Show/hide LLM settings based on checkbox
+            llmSettingsGroup.classList.toggle('hidden', !llmSettings.useLLM);
+            generateMessageButton.classList.toggle('hidden', !llmSettings.useLLM);
+        }
     } else {
-      // Tab is not active, add default message container
-      addMessageContainer('', 15, '', false);
-      
-      // Load default settings
-      chrome.storage.local.get(['defaultInterval', 'defaultSelector', 'llmProvider', 'apiKey', 'contextPrompt'], function(defaults) {
-        if (defaults.defaultInterval) {
-          document.querySelector('.interval-input').value = defaults.defaultInterval;
-        }
+        // Tab is not active, add default message container
+        addMessageContainer('', 15, '');
         
-        if (defaults.defaultSelector) {
-          document.querySelector('.chat-selector').value = defaults.defaultSelector;
-        }
-        
-        if (defaults.llmProvider) {
-          llmProviderSelect.value = defaults.llmProvider;
-        }
-        
-        if (defaults.apiKey) {
-          apiKeyInput.value = defaults.apiKey;
-        }
-        
-        if (defaults.contextPrompt) {
-          contextPromptInput.value = defaults.contextPrompt;
-        }
-      });
+        // Load default settings
+        chrome.storage.local.get(['defaultInterval', 'defaultSelector', 'useLLM', 'llmProvider', 'apiKey', 'contextPrompt'], function(defaults) {
+            if (defaults.defaultInterval) {
+                document.querySelector('.interval-input').value = defaults.defaultInterval;
+            }
+            
+            if (defaults.defaultSelector) {
+                document.querySelector('.chat-selector').value = defaults.defaultSelector;
+            }
+            
+            if (defaults.useLLM !== undefined) {
+                useLLMCheckbox.checked = defaults.useLLM;
+                llmSettingsGroup.classList.toggle('hidden', !defaults.useLLM);
+                generateMessageButton.classList.toggle('hidden', !defaults.useLLM);
+            }
+            
+            if (defaults.llmProvider) {
+                llmProviderSelect.value = defaults.llmProvider;
+            }
+            
+            if (defaults.apiKey) {
+                apiKeyInput.value = defaults.apiKey;
+            }
+            
+            if (defaults.contextPrompt) {
+                contextPromptInput.value = defaults.contextPrompt;
+            }
+        });
     }
-  });
+});
     }
   });
   
@@ -206,10 +216,10 @@ chrome.storage.local.get('activeTabs', function(data) {
   contextPromptInput.addEventListener('change', function() {
     chrome.storage.local.set({contextPrompt: this.value});
   });
-// Add message button click handler
-addMessageBtn.addEventListener('click', function() {
-    addMessageContainer('', 15, '', false);
-  });
+    // Add event listener for add message button
+    addMessageBtn.addEventListener('click', function() {
+        addMessageContainer('', 15, '');
+      });
       
       // Add event listener for toggle button
       toggleButton.addEventListener('click', function() {
@@ -331,12 +341,12 @@ addMessageBtn.addEventListener('click', function() {
   });
   
   // Test button click handler
-  testButton.addEventListener('click', function() {
+testButton.addEventListener('click', function() {
     // Get all messages
     const messages = getAllMessages();
     
     // Validate that we have at least one message
-    if (messages.length === 0) {
+    if (messages.length === 0 && !useLLMCheckbox.checked) {
       statusDiv.textContent = 'Error: Please add at least one message';
       statusDiv.className = 'status inactive';
       return;
@@ -364,6 +374,7 @@ addMessageBtn.addEventListener('click', function() {
             chatSelector: document.querySelector('.chat-selector').value || '#input', // Try YouTube's selector first
             enableNotifications: enableNotificationsCheckbox.checked, // Pass notification preference
             llmSettings: {
+              useLLM: useLLMCheckbox.checked,
               provider: llmProviderSelect.value,
               apiKey: apiKeyInput.value,
               context: contextPromptInput.value
@@ -568,93 +579,99 @@ function getAllMessages() {
     }).filter(message => message.text.trim() !== '');
 }
       
-// Function to start posting
-function startPosting() {
-    // Get all messages
-    const messages = getAllMessages();
-    
-    // Validate that we have at least one message
-    if (messages.length === 0) {
-      statusDiv.textContent = 'Error: Please add at least one message';
-      statusDiv.className = 'status inactive';
-      return;
-    }
-    
-    // Get interval from first message container or default
-    const interval = messages.length > 0 ? messages[0].interval : 15;
-    
-    // Get chat selector from first message container or default
-    const chatSelector = document.querySelector('.chat-selector').value || '#chat-input-wrapper > div > div.editor-input > p';
-    
-    // Save settings
-    chrome.storage.local.set({
-      defaultInterval: interval,
-      defaultSelector: chatSelector,
-      enableNotifications: enableNotificationsCheckbox.checked
-    });
-    
-    // Send start message to content script
-    chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
-      // First ensure content script is loaded
-      chrome.scripting.executeScript({
-        target: {tabId: tabs[0].id},
-        files: ['content.js']
-      }).then(() => {
-        // Now start posting
-        setTimeout(() => {
-          chrome.tabs.sendMessage(tabs[0].id, {
-            action: 'start',
-            messages: messages,
-            interval: interval,
-            chatSelector: chatSelector,
-            enableNotifications: enableNotificationsCheckbox.checked,
-            llmSettings: {
-              provider: llmProviderSelect.value,
-              apiKey: apiKeyInput.value,
-              context: contextPromptInput.value
-            }
-          }, function(response) {
-            if (response && response.success) {
-              // Update UI
-              toggleButton.textContent = 'Stop Posting';
-              toggleButton.className = 'stop';
-              statusDiv.textContent = 'Status: Active';
-              statusDiv.className = 'status active';
-              
-              // Save active state
-              chrome.storage.local.get('activeTabs', function(data) {
-                const activeTabs = data.activeTabs || {};
-                
-                activeTabs[tabs[0].id] = {
-                  url: tabs[0].url,
-                  title: tabs[0].title,
-                  messages: messages,
-                  interval: interval,
-                  selector: chatSelector,
-                  llmSettings: {
-                    provider: llmProviderSelect.value,
-                    apiKey: apiKeyInput.value,
-                    context: contextPromptInput.value
-                  }
-                };
-                
-                chrome.storage.local.set({activeTabs: activeTabs}, function() {
-                  updateActiveTabsList();
-                });
-              });
-            } else {
-              statusDiv.textContent = 'Error: Failed to start posting';
-              statusDiv.className = 'status inactive';
-            }
+      // Function to start posting
+      function startPosting() {
+        // Get all messages
+        const messages = getAllMessages();
+        
+        // Validate that we have at least one message or LLM is enabled
+        if (messages.length === 0 && !useLLMCheckbox.checked) {
+          statusDiv.textContent = 'Error: Please add at least one message or enable AI generation';
+          statusDiv.className = 'status inactive';
+          return;
+        }
+        
+        // Get interval from first message container or default
+        const interval = messages.length > 0 ? messages[0].interval : 15;
+        
+        // Get chat selector from first message container or default
+        const chatSelector = document.querySelector('.chat-selector').value || '#chat-input-wrapper > div > div.editor-input > p';
+        
+        // Save settings
+        chrome.storage.local.set({
+            defaultInterval: interval,
+            defaultSelector: chatSelector,
+            useLLM: useLLMCheckbox.checked,
+            llmProvider: llmProviderSelect.value,
+            apiKey: apiKeyInput.value,
+            contextPrompt: contextPromptInput.value,
+            enableNotifications: enableNotificationsCheckbox.checked
           });
-        }, 500);
-      }).catch(err => {
-        console.error('Failed to inject content script for starting:', err);
-        statusDiv.textContent = 'Error injecting content script: ' + err.message;
-        statusDiv.className = 'status inactive';
-      });
-    });
-  }
+        
+        // Send start message to content script
+        chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+          // First ensure content script is loaded
+          chrome.scripting.executeScript({
+            target: {tabId: tabs[0].id},
+            files: ['content.js']
+          }).then(() => {
+            // Now start posting
+            setTimeout(() => {
+                chrome.tabs.sendMessage(tabs[0].id, {
+                    action: 'start',
+                    messages: messages,
+                    interval: interval,
+                    chatSelector: chatSelector,
+                    enableNotifications: enableNotificationsCheckbox.checked,
+                    llmSettings: {
+                  useLLM: useLLMCheckbox.checked,
+                  provider: llmProviderSelect.value,
+                  apiKey: apiKeyInput.value,
+                  context: contextPromptInput.value
+                }
+              }, function(response) {
+                if (response && response.success) {
+                  // Update UI
+                  toggleButton.textContent = 'Stop Posting';
+                  toggleButton.className = 'stop';
+                  statusDiv.textContent = 'Status: Active';
+                  statusDiv.className = 'status active';
+                  
+                  // Save active state
+                  chrome.storage.local.get('activeTabs', function(data) {
+                    const activeTabs = data.activeTabs || {};
+                    
+                    activeTabs[tabs[0].id] = {
+                      url: tabs[0].url,
+                      title: tabs[0].title,
+                      messages: messages,
+                      interval: interval,
+                      selector: chatSelector,
+                      llmSettings: {
+                        useLLM: useLLMCheckbox.checked,
+                        provider: llmProviderSelect.value,
+                        apiKey: apiKeyInput.value,
+                        context: contextPromptInput.value
+                      }
+                    };
+                    
+                    chrome.storage.local.set({activeTabs: activeTabs}, function() {
+                      updateActiveTabsList();
+                    });
+                  });
+                } else {
+                  statusDiv.textContent = 'Error: Failed to start posting';
+                  statusDiv.className = 'status inactive';
+                }
+              });
+            }, 500);
+          }).catch(err => {
+            console.error('Failed to inject content script for starting:', err);
+            statusDiv.textContent = 'Error injecting content script: ' + err.message;
+            statusDiv.className = 'status inactive';
+          });
+        });
+      }
       
       // Function to stop posting
       function stopPosting() {

@@ -5,11 +5,6 @@ let currentLLMSettings = null;
 // Variable to track message indices
 let messageIndices = {};
 
-
-let messageData = [];
-let isActive = false;
-
-
 // Add at the top of content.js
 console.log('Scheduled Message Sender content script loaded');
 
@@ -303,7 +298,7 @@ async function postDonationMessage(message, selector, shouldSend = true, showNot
     console.log('Posting message with selector:', selector, 'useLLM:', useLLM);
     
     // If using LLM and message is empty or explicitly requested, generate a message
-    if (useLLM) {
+    if ((useLLM || (message.trim() === '')) && useLLM !== false) {
       console.log('Generating message using LLM');
       try {
         const response = await new Promise((resolve, reject) => {
@@ -350,172 +345,158 @@ async function postDonationMessage(message, selector, shouldSend = true, showNot
       });
     }
     return success;
-  }
+}
 
 // Listen for messages from popup or background
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
-    if (request.action === 'ping') {
-      console.log('Received ping request');
-      sendResponse({pong: true});
-    } else if (request.action === 'start') {
-      console.log('Received start request');
+  if (request.action === 'ping') {
+    console.log('Received ping request');
+    sendResponse({pong: true});
+  } else if (request.action === 'start') {
+    console.log('Received start request');
+    
+    // Clear any existing intervals
+    clearAllIntervals();
+    
+    // Default selector to use if a message doesn't have one
+    const defaultSelector = request.chatSelector || '#chat-input-wrapper > div > div.editor-input > p';
+    console.log('Using default selector:', defaultSelector);
+    
+    // Set up intervals for each message
+    if (request.messages && request.messages.length > 0) {
+      console.log('Setting up intervals for', request.messages.length, 'messages');
       
-      // Clear any existing intervals
-      clearAllIntervals();
-      
-      // Default selector to use if a message doesn't have one
-      const defaultSelector = request.chatSelector || '#chat-input-wrapper > div > div.editor-input > p';
-      console.log('Using default selector:', defaultSelector);
-      
-      // Set up intervals for each message
-      if (request.messages && request.messages.length > 0) {
-        console.log('Setting up intervals for', request.messages.length, 'messages');
+      request.messages.forEach((messageObj, index) => {
+        // Initialize message index counter
+        messageIndices[index] = 0;
         
-        // Clear messageData array before adding new messages
-        messageData = [];
+        // Convert minutes to milliseconds
+        const intervalMs = messageObj.interval * 60 * 1000;
+        console.log('Message', index, 'interval:', messageObj.interval, 'minutes');
         
-        request.messages.forEach((messageObj, index) => {
-          // Initialize message index counter
-          messageIndices[index] = 0;
-          
-          // Convert minutes to milliseconds
-          const intervalMs = messageObj.interval * 60 * 1000;
-          console.log('Message', index, 'interval:', messageObj.interval, 'minutes');
-          
-          // Use message-specific selector or fall back to default
-          const selector = messageObj.selector || defaultSelector;
-          
-          // Create interval for this message
-          const id = setInterval(() => {
-            postDonationMessage(messageObj.text, selector, true, true, messageObj.useLLM);
-          }, intervalMs);
-          
-          // Store the interval ID
-          intervalIds.push(id);
-          
-          // Store message data
-          messageData.push({
-            text: messageObj.text,
-            selector: selector,
-            interval: messageObj.interval,
-            useLLM: messageObj.useLLM
-          });
-          
-          console.log('Interval set for message:', messageObj.text, 'with ID:', id);
-        });
+        // Use message-specific selector or fall back to default
+        const selector = messageObj.selector || defaultSelector;
         
-        // Store LLM settings if provided
-        if (request.llmSettings) {
-          currentLLMSettings = request.llmSettings;
-          console.log('LLM settings stored:', currentLLMSettings);
-        }
-        
-        // Set active flag
-        isActive = true;
-        
-        sendResponse({success: true});
-      } else if (currentLLMSettings && currentLLMSettings.useLLM) {
-        // If using LLM without specific messages
-        console.log('Setting up LLM-based message generation');
-        
-        const intervalMs = request.interval * 60 * 1000;
-        console.log('LLM message interval:', request.interval, 'minutes');
-        
+        // Create interval for this message
         const id = setInterval(() => {
-          postDonationMessage("", defaultSelector, true, true, true);
+          postDonationMessage(messageObj.text, selector, true, true, messageObj.useLLM);
         }, intervalMs);
         
+        // Store the interval ID
         intervalIds.push(id);
         
-        // Post immediately
-        postDonationMessage("", defaultSelector, true, true, true);
-        
-        // Set active flag
-        isActive = true;
-        
-        sendResponse({success: true});
-      } else {
-        console.error('No messages provided and LLM not enabled');
-        sendResponse({success: false, error: 'No messages provided and LLM not enabled'});
-      }
-    } else if (request.action === 'stop') {
-      console.log('Received stop request');
-      
-      // Clear all intervals
-      clearAllIntervals();
-      
-      // Clear LLM settings
-      currentLLMSettings = null;
-      
-      // Set inactive flag
-      isActive = false;
+        // Post immediately for the first message only
+        if (index === 0) {
+          postDonationMessage(messageObj.text, selector);
+        }
+      });
       
       sendResponse({success: true});
-    } else if (request.action === 'testInput') {
-      console.log('Received test input request');
+    } else if (currentLLMSettings && currentLLMSettings.useLLM) {
+      // If using LLM without specific messages
+      console.log('Setting up LLM-based message generation');
       
-      // Test input without sending
-      console.log('Testing input with selector:', request.chatSelector);
+      const intervalMs = request.interval * 60 * 1000;
+      console.log('LLM message interval:', request.interval, 'minutes');
       
-      // Store LLM settings if provided
-      if (request.llmSettings) {
-        currentLLMSettings = request.llmSettings;
-        console.log('LLM settings stored for testing:', currentLLMSettings);
+      const id = setInterval(() => {
+        postDonationMessage("", defaultSelector);
+      }, intervalMs);
+      
+      intervalIds.push(id);
+      
+      // Post immediately
+      postDonationMessage("", defaultSelector);
+      
+      sendResponse({success: true});
+    } else {
+      console.error('No messages provided and LLM not enabled');
+      sendResponse({success: false, error: 'No messages provided and LLM not enabled'});
+    }
+  } else if (request.action === 'stop') {
+    console.log('Received stop request');
+    
+    // Clear all intervals
+    clearAllIntervals();
+    
+    // Clear LLM settings
+    currentLLMSettings = null;
+    
+    sendResponse({success: true});
+
+
+
+
+
+  }// In the content.js file, find the testInput action handler (around line 438)
+  else if (request.action === 'testInput') {
+    console.log('Received test input request');
+    
+    // Test input without sending
+    console.log('Testing input with selector:', request.chatSelector);
+    
+    // Store LLM settings if provided
+    if (request.llmSettings) {
+      currentLLMSettings = request.llmSettings;
+      console.log('LLM settings stored for testing:', currentLLMSettings);
+    }
+    
+    if (request.messages && request.messages.length > 0) {
+      const messageObj = request.messages[0];
+      const selector = messageObj.selector || request.chatSelector;
+      console.log('Message to insert:', messageObj.text);
+      console.log('Using selector:', selector);
+      
+      // Debug the element we're trying to target
+      debugElementInfo(selector);
+      
+      // Pass false for shouldSend and showNotification to avoid double notifications
+      const success = postDonationMessage(messageObj.text, selector, false, false);
+      
+      // Add notification for test success - this is the ONLY notification that should be sent
+      if (success && request.enableNotifications !== false) {
+        chrome.runtime.sendMessage({
+          action: 'showNotification',
+          title: 'Test Message Success',
+          message: messageObj.text.length > 50 ? messageObj.text.substring(0, 47) + '...' : messageObj.text
+        });
       }
       
-      if (request.messages && request.messages.length > 0) {
-        const messageObj = request.messages[0];
-        const selector = messageObj.selector || request.chatSelector;
-        console.log('Message to insert:', messageObj.text);
-        console.log('Using selector:', selector);
-        
-        // Debug the element we're trying to target
-        debugElementInfo(selector);
-        
-        // Pass false for shouldSend and showNotification to avoid double notifications
-        const success = postDonationMessage(messageObj.text, selector, false, false);
-        
-        // Add notification for test success - this is the ONLY notification that should be sent
+      sendResponse({success: success});
+    } else if (currentLLMSettings && currentLLMSettings.useLLM) {
+      // If using LLM for testing
+      console.log('Testing with LLM-generated message');
+      
+      // We'll generate a message but not send it, and not show notification from inside postDonationMessage
+      postDonationMessage("", request.chatSelector, false, false).then(success => {
+        // Add notification for LLM test success
         if (success && request.enableNotifications !== false) {
+          // Get the generated message from the input field
+          const element = document.querySelector(request.chatSelector);
+          let message = "";
+          if (element) {
+            message = element.value || element.textContent || "Generated message";
+          } else {
+            message = "Generated message";
+          }
+          
           chrome.runtime.sendMessage({
             action: 'showNotification',
-            title: 'Test Message Success',
-            message: messageObj.text.length > 50 ? messageObj.text.substring(0, 47) + '...' : messageObj.text
+            title: 'Test Message Success (AI)',
+            message: message.length > 50 ? message.substring(0, 47) + '...' : message
           });
         }
         
         sendResponse({success: success});
-      } else if (currentLLMSettings && currentLLMSettings.useLLM) {
-        // If using LLM for testing
-        console.log('Testing with LLM-generated message');
-        
-        // We'll generate a message but not send it, and not show notification from inside postDonationMessage
-        postDonationMessage("", request.chatSelector, false, false, true).then(success => {
-          // Add notification for LLM test success
-          if (success && request.enableNotifications !== false) {
-            // Get the generated message from the input field
-            const element = document.querySelector(request.chatSelector);
-            let message = "";
-            if (element) {
-              message = element.value || element.textContent || "Generated message";
-            } else {
-              message = "Generated message";
-            }
-            
-            chrome.runtime.sendMessage({
-              action: 'showNotification',
-              title: 'Test Message Success (AI)',
-              message: message.length > 50 ? message.substring(0, 47) + '...' : message
-            });
-          }
-          
-          sendResponse({success: success});
-        });
-        
-        return true; // Keep the message channel open for async response
-      } else {
-        console.error('No messages provided for testing');
-        sendResponse({success: false, error: 'No messages provided for testing'});
-      }
+      });
+      
+      return true; // Keep the message channel open for async response
+    } else {
+      console.error('No messages provided for testing');
+      sendResponse({success: false, error: 'No messages provided for testing'});
     }
-  });
+  }
+
+
+});
+    

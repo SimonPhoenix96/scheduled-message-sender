@@ -568,7 +568,8 @@ function getAllMessages() {
     }).filter(message => message.text.trim() !== '');
 }
       
-// Function to start posting
+      // Function to start posting
+     // Function to start posting
 function startPosting() {
     // Get all messages
     const messages = getAllMessages();

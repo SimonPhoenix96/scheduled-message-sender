@@ -192,10 +192,14 @@ chrome.storage.local.get('activeTabs', function(data) {
   // Update active tabs list
   updateActiveTabsList();
   
-  // Add event listener for LLM provider select
-  llmProviderSelect.addEventListener('change', function() {
-    chrome.storage.local.set({llmProvider: this.value});
-  });
+// Add event listener for LLM provider select
+if (llmProviderSelect) {
+    llmProviderSelect.addEventListener('change', function() {
+      chrome.storage.local.set({llmProvider: this.value});
+    });
+  } else {
+    console.warn('LLM provider select element not found');
+  }
   
   // Add event listener for API key input
   apiKeyInput.addEventListener('change', function() {
