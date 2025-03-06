@@ -299,7 +299,6 @@ function setTextAndSend(message, selector, shouldSend = true) {
 }
 
 // Function to post a message
-// Function to post a message
 async function postDonationMessage(message, selector, shouldSend = true, showNotification = true, useLLM = false) {
     console.log('Posting message with selector:', selector, 'useLLM:', useLLM);
     
@@ -307,21 +306,9 @@ async function postDonationMessage(message, selector, shouldSend = true, showNot
     if (useLLM) {
       console.log('Generating message using LLM');
       try {
-        // Find the message data that matches this request
-        const messageInfo = messageData.find(msg => 
-          msg.text === message && 
-          msg.selector === selector && 
-          msg.useLLM === useLLM
-        );
-        
-        // Get message-specific context if available
-        const messageContext = messageInfo?.context || '';
-        console.log('Using message-specific context:', messageContext);
-        
         const response = await new Promise((resolve, reject) => {
           chrome.runtime.sendMessage({
-            action: 'getNewMessage',
-            context: messageContext // Pass the message-specific context
+            action: 'getNewMessage'
           }, function(response) {
             if (chrome.runtime.lastError) {
               reject(chrome.runtime.lastError);
@@ -363,7 +350,7 @@ async function postDonationMessage(message, selector, shouldSend = true, showNot
       });
     }
     return success;
-}
+  }
 
 // Listen for messages from popup or background
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {

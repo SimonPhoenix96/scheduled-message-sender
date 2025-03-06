@@ -137,22 +137,16 @@ document.addEventListener('DOMContentLoaded', function() {
           statusDiv.textContent = 'Status: Active';
           statusDiv.className = 'status active';
           
-// Load saved messages for this tab
-if (activeTabs[currentTabId].messages && activeTabs[currentTabId].messages.length > 0) {
-    activeTabs[currentTabId].messages.forEach(message => {
-        // Make sure to pass the context property
-        addMessageContainer(
-            message.text, 
-            message.interval, 
-            message.selector, 
-            message.useLLM,
-            message.context || '' // Add the context parameter
-        );
-    });
-} else {
-    // No messages yet, add default container
-    addMessageContainer('', 15, '', false, '');
-}
+          // Load saved messages for this tab
+          if (activeTabs[currentTabId].messages && activeTabs[currentTabId].messages.length > 0) {
+            activeTabs[currentTabId].messages.forEach(message => {
+              // Make sure to pass the useLLM property
+              addMessageContainer(message.text, message.interval, message.selector, message.useLLM);
+            });
+          } else {
+            // No messages yet, add default container
+            addMessageContainer('', 15, '', false);
+          }
           
           // Load LLM settings if they exist
           if (activeTabs[currentTabId].llmSettings) {
@@ -361,17 +355,17 @@ if (activeTabs[currentTabId].messages && activeTabs[currentTabId].messages.lengt
         
         // Now test the input
         setTimeout(() => {
-            chrome.tabs.sendMessage(tabs[0].id, {
-                action: 'testInput',
-                messages: messages,
-                chatSelector: document.querySelector('.chat-selector').value || '#input',
-                enableNotifications: enableNotificationsCheckbox.checked,
-                llmSettings: {
-                    provider: llmProviderSelect.value,
-                    apiKey: apiKeyInput.value,
-                    context: contextPromptInput.value
-                }
-            }, function(response) {
+          chrome.tabs.sendMessage(tabs[0].id, {
+            action: 'testInput',
+            messages: messages,
+            chatSelector: document.querySelector('.chat-selector').value || '#input', // Try YouTube's selector first
+            enableNotifications: enableNotificationsCheckbox.checked, // Pass notification preference
+            llmSettings: {
+              provider: llmProviderSelect.value,
+              apiKey: apiKeyInput.value,
+              context: contextPromptInput.value
+            }
+          }, function(response) {
             if (chrome.runtime.lastError) {
               statusDiv.textContent = 'Error: ' + chrome.runtime.lastError.message;
               statusDiv.className = 'status inactive';
@@ -564,14 +558,12 @@ function addMessageContainer(text = '', interval = 15, selector = '', useLLM = f
             const intervalInput = container.querySelector('.interval-input');
             const selectorInput = container.querySelector('.chat-selector');
             const useLLMCheckbox = container.querySelector('.use-llm-checkbox');
-            const contextInput = container.querySelector('.message-context');
             
             messages.push({
                 text: messageTextarea.value,
                 interval: parseInt(intervalInput.value) || 15,
                 selector: selectorInput.value,
-                useLLM: useLLMCheckbox.checked,
-                context: contextInput ? contextInput.value : '' // Include the context
+                useLLM: useLLMCheckbox.checked
             });
         });
         

@@ -361,17 +361,17 @@ if (activeTabs[currentTabId].messages && activeTabs[currentTabId].messages.lengt
         
         // Now test the input
         setTimeout(() => {
-            chrome.tabs.sendMessage(tabs[0].id, {
-                action: 'testInput',
-                messages: messages,
-                chatSelector: document.querySelector('.chat-selector').value || '#input',
-                enableNotifications: enableNotificationsCheckbox.checked,
-                llmSettings: {
-                    provider: llmProviderSelect.value,
-                    apiKey: apiKeyInput.value,
-                    context: contextPromptInput.value
-                }
-            }, function(response) {
+          chrome.tabs.sendMessage(tabs[0].id, {
+            action: 'testInput',
+            messages: messages,
+            chatSelector: document.querySelector('.chat-selector').value || '#input', // Try YouTube's selector first
+            enableNotifications: enableNotificationsCheckbox.checked, // Pass notification preference
+            llmSettings: {
+              provider: llmProviderSelect.value,
+              apiKey: apiKeyInput.value,
+              context: contextPromptInput.value
+            }
+          }, function(response) {
             if (chrome.runtime.lastError) {
               statusDiv.textContent = 'Error: ' + chrome.runtime.lastError.message;
               statusDiv.className = 'status inactive';
