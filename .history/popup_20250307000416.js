@@ -485,11 +485,6 @@ const randomRangeContainer = document.createElement('div');
 randomRangeContainer.className = 'random-range-container';
 randomRangeContainer.style.display = intervalTypeSelect.value === 'random' ? 'flex' : 'none';
 
-
-intervalInput.style.display = intervalTypeSelect.value === 'random' ? 'none' : 'inline-block';
-intervalLabel.style.display = intervalTypeSelect.value === 'random' ? 'none' : 'inline-block';
-
-
 const minLabel = document.createElement('label');
 minLabel.textContent = 'Min (sec):';
 minLabel.style.marginRight = '5px';
@@ -524,12 +519,7 @@ randomRangeContainer.appendChild(maxInput);
 
 // Add event listener to show/hide random range inputs
 intervalTypeSelect.addEventListener('change', function() {
-    // Show/hide random range inputs
     randomRangeContainer.style.display = this.value === 'random' ? 'flex' : 'none';
-    
-    // Show/hide the regular interval input based on selection
-    intervalInput.style.display = this.value === 'random' ? 'none' : 'inline-block';
-    intervalLabel.style.display = this.value === 'random' ? 'none' : 'inline-block';
 });
 
 // Make sure the interval container has proper styling

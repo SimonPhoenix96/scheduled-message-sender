@@ -94,43 +94,54 @@ chrome.runtime.onInstalled.addListener(function() {
   });
   
   // Handle message generation requests
+// Handle message generation requests
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
-    if (request.action === 'getNewMessage') {
-      console.log('Received request to generate new message');
+    if (request.action === 'generateMessage') {
+      // First try to use the provided API key
+      let provider = request.provider;
+      let apiKey = request.apiKey;
+      let context = request.context;
       
-      // Get provider and model from request or use defaults
-      const provider = request.provider || 'openai';
-      const model = request.model || '';
-      
-      // Get API key for the provider
-      chrome.storage.local.get([provider + 'Key'], function(data) {
-        const apiKey = data[provider + 'Key'];
-        
-        if (!apiKey) {
-          console.error('No API key found for provider:', provider);
-          sendResponse({
-            error: 'No API key found for ' + provider,
-            fallbackMessage: 'Hello! Thanks for watching the stream!'
-          });
-          return;
-        }
-        
-        // Generate message using the specified provider, model and context
-        generateMessage(provider, apiKey, request.context || '', model)
-          .then(message => {
-            sendResponse({message: message});
-          })
-          .catch(error => {
-            console.error('Error generating message:', error);
-            sendResponse({
-              error: error.message,
-              fallbackMessage: 'Hello! Thanks for watching the stream!'
+      // If no API key provided, try to get from storage
+      if (!apiKey) {
+        chrome.storage.local.get([provider + 'Key', 'contextPrompt'], function(data) {
+          const storedKey = data[provider + 'Key'];
+          const storedContext = data.contextPrompt;
+          
+          if (storedKey) {
+            apiKey = storedKey;
+            console.log('Using stored API key for', provider);
+            
+            // Use stored context if none provided
+            if (!context && storedContext) {
+              context = storedContext;
+              console.log('Using stored context prompt');
+            }
+            
+            generateMessage(provider, apiKey, context).then(message => {
+              sendResponse({message: message});
+            }).catch(error => {
+              console.error('Error generating message:', error);
+              sendResponse({error: error.message || 'Failed to generate message'});
             });
-          });
+          } else {
+            sendResponse({error: 'No API key found for ' + provider});
+          }
+        });
+        
+        return true; // Keep the message channel open for async response
+      }
+      
+      // If API key was provided directly, use it
+      generateMessage(provider, apiKey, context).then(message => {
+        sendResponse({message: message});
+      }).catch(error => {
+        console.error('Error generating message:', error);
+        sendResponse({error: error.message || 'Failed to generate message'});
       });
       
       return true; // Keep the message channel open for async response
-    }else if (request.action === 'getNewMessage') {
+    } else if (request.action === 'getNewMessage') {
       const tabId = sender.tab.id;
       
       chrome.storage.local.get(['activeTabs', 'openaiKey', 'openrouterKey', 'contextPrompt'], function(data) {

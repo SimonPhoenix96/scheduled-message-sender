@@ -93,7 +93,7 @@ chrome.runtime.onInstalled.addListener(function() {
     });
   });
   
-  // Handle message generation requests
+// Handle message generation requests
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     if (request.action === 'getNewMessage') {
       console.log('Received request to generate new message');
@@ -130,7 +130,18 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
       });
       
       return true; // Keep the message channel open for async response
-    }else if (request.action === 'getNewMessage') {
+    }
+      
+      // If API key was provided directly, use it
+      generateMessage(provider, apiKey, context).then(message => {
+        sendResponse({message: message});
+      }).catch(error => {
+        console.error('Error generating message:', error);
+        sendResponse({error: error.message || 'Failed to generate message'});
+      });
+      
+      return true; // Keep the message channel open for async response
+    } else if (request.action === 'getNewMessage') {
       const tabId = sender.tab.id;
       
       chrome.storage.local.get(['activeTabs', 'openaiKey', 'openrouterKey', 'contextPrompt'], function(data) {

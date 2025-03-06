@@ -75,6 +75,7 @@ document.addEventListener('DOMContentLoaded', function() {
   });
   
   // Save settings button click handler
+// In the saveSettingsBtn click handler, add default values for hidden fields
 saveSettingsBtn.addEventListener('click', function() {
     // Default to OpenRouter if no provider is selected
     const provider = llmProviderSelect.value || 'openrouter';
@@ -148,23 +149,18 @@ saveSettingsBtn.addEventListener('click', function() {
 // Load saved messages for this tab
 if (activeTabs[currentTabId].messages && activeTabs[currentTabId].messages.length > 0) {
     activeTabs[currentTabId].messages.forEach(message => {
-        // Make sure to pass all properties
+        // Make sure to pass the context property
         addMessageContainer(
             message.text, 
             message.interval, 
             message.selector, 
             message.useLLM,
-            message.context || '',
-            message.provider || '',
-            message.model || '',
-            message.intervalType || 'minutes',
-            message.minInterval || 30,
-            message.maxInterval || 120
+            message.context || '' // Add the context parameter
         );
     });
 } else {
     // No messages yet, add default container
-    addMessageContainer('', 15, '', false, '', '', '');
+    addMessageContainer('', 15, '', false, '');
 }
           
           // Load LLM settings if they exist
@@ -428,7 +424,7 @@ if (activeTabs[currentTabId].messages && activeTabs[currentTabId].messages.lengt
   });
 
 // Function to add a message container
-function addMessageContainer(text = '', interval = 15, selector = '', useLLM = false, context = '', provider = '', model = '', intervalType = 'minutes', minInterval = 30, maxInterval = 120) {
+function addMessageContainer(text = '', interval = 15, selector = '', useLLM = false, context = '') {
     const messagesContainer = document.getElementById('messagesContainer');
     
     // Create container
@@ -444,104 +440,21 @@ function addMessageContainer(text = '', interval = 15, selector = '', useLLM = f
     messageTextarea.value = text;
     messageTextarea.rows = 3;
     
-// Create interval input
-const intervalContainer = document.createElement('div');
-intervalContainer.className = 'message-interval-container';
-
-const intervalLabel = document.createElement('label');
-intervalLabel.textContent = 'Interval:';
-
-const intervalInput = document.createElement('input');
-intervalInput.type = 'number';
-intervalInput.className = 'interval-input';
-intervalInput.value = interval;
-intervalInput.min = 1;
-
-// Create interval type selector
-const intervalTypeSelect = document.createElement('select');
-intervalTypeSelect.className = 'interval-type-select';
-const typeOptions = [
-    { value: 'minutes', text: 'Minutes' },
-    { value: 'seconds', text: 'Seconds' },
-    { value: 'random', text: 'Random' }
-];
-
-typeOptions.forEach(option => {
-    const optionElement = document.createElement('option');
-    optionElement.value = option.value;
-    optionElement.textContent = option.text;
-    intervalTypeSelect.appendChild(optionElement);
-});
-
-// Set the selected type if provided
-if (typeof intervalType === 'string') {
-    intervalTypeSelect.value = intervalType;
-} else {
-    intervalTypeSelect.value = 'minutes'; // Default
-}
-
-// Create random interval range container (hidden by default)
-const randomRangeContainer = document.createElement('div');
-randomRangeContainer.className = 'random-range-container';
-randomRangeContainer.style.display = intervalTypeSelect.value === 'random' ? 'flex' : 'none';
-
-
-intervalInput.style.display = intervalTypeSelect.value === 'random' ? 'none' : 'inline-block';
-intervalLabel.style.display = intervalTypeSelect.value === 'random' ? 'none' : 'inline-block';
-
-
-const minLabel = document.createElement('label');
-minLabel.textContent = 'Min (sec):';
-minLabel.style.marginRight = '5px';
-
-const minInput = document.createElement('input');
-minInput.type = 'number';
-minInput.className = 'min-interval-input';
-minInput.value = minInterval || 30;
-minInput.min = 1;
-minInput.style.width = '60px';
-minInput.style.marginRight = '10px';
-
-const maxLabel = document.createElement('label');
-maxLabel.textContent = 'Max (sec):';
-maxLabel.style.marginRight = '5px';
-
-const maxInput = document.createElement('input');
-maxInput.type = 'number';
-maxInput.className = 'max-interval-input';
-maxInput.value = maxInterval || 120;
-maxInput.min = 2;
-maxInput.style.width = '60px';
-
-// Clear the container before adding elements to prevent duplicates
-randomRangeContainer.innerHTML = '';
-
-// Add elements to the container
-randomRangeContainer.appendChild(minLabel);
-randomRangeContainer.appendChild(minInput);
-randomRangeContainer.appendChild(maxLabel);
-randomRangeContainer.appendChild(maxInput);
-
-// Add event listener to show/hide random range inputs
-intervalTypeSelect.addEventListener('change', function() {
-    // Show/hide random range inputs
-    randomRangeContainer.style.display = this.value === 'random' ? 'flex' : 'none';
+    // Create interval input
+    const intervalContainer = document.createElement('div');
+    intervalContainer.className = 'message-interval-container';
     
-    // Show/hide the regular interval input based on selection
-    intervalInput.style.display = this.value === 'random' ? 'none' : 'inline-block';
-    intervalLabel.style.display = this.value === 'random' ? 'none' : 'inline-block';
-});
-
-// Make sure the interval container has proper styling
-intervalContainer.style.display = 'flex';
-intervalContainer.style.flexWrap = 'wrap';
-intervalContainer.style.alignItems = 'center';
-
-// Add the random range container to the interval container
-intervalContainer.appendChild(intervalLabel);
-intervalContainer.appendChild(intervalInput);
-intervalContainer.appendChild(intervalTypeSelect);
-intervalContainer.appendChild(randomRangeContainer);
+    const intervalLabel = document.createElement('label');
+    intervalLabel.textContent = 'Interval (minutes):';
+    
+    const intervalInput = document.createElement('input');
+    intervalInput.type = 'number';
+    intervalInput.className = 'interval-input';
+    intervalInput.value = interval;
+    intervalInput.min = 1;
+    
+    intervalContainer.appendChild(intervalLabel);
+    intervalContainer.appendChild(intervalInput);
     
     // Create chat selector input
     const selectorContainer = document.createElement('div');
@@ -574,98 +487,7 @@ intervalContainer.appendChild(randomRangeContainer);
     llmContainer.appendChild(llmCheckbox);
     llmContainer.appendChild(llmLabel);
     
-    // Create AI provider selection (new)
-    const providerContainer = document.createElement('div');
-    providerContainer.className = 'message-provider-container';
-    providerContainer.style.display = useLLM ? 'block' : 'none';
-    
-    const providerLabel = document.createElement('label');
-    providerLabel.textContent = 'AI Provider:';
-    
-    const providerSelect = document.createElement('select');
-    providerSelect.className = 'message-provider';
-
-    
-    
-    // Add provider options
-    const openaiOption = document.createElement('option');
-    openaiOption.value = 'openai';
-    openaiOption.textContent = 'OpenAI';
-    
-    const openrouterOption = document.createElement('option');
-    openrouterOption.value = 'openrouter';
-    openrouterOption.textContent = 'OpenRouter';
-    
-    providerSelect.appendChild(openaiOption);
-    providerSelect.appendChild(openrouterOption);
-    
-    // Set selected provider if provided
-    if (provider) {
-        providerSelect.value = provider;
-    }
-    
-    providerContainer.appendChild(providerLabel);
-    providerContainer.appendChild(providerSelect);
-    
-    // Create model selection (new)
-    const modelContainer = document.createElement('div');
-    modelContainer.className = 'message-model-container';
-    modelContainer.style.display = useLLM ? 'block' : 'none';
-    
-    const modelLabel = document.createElement('label');
-    modelLabel.textContent = 'AI Model:';
-    
-    const modelSelect = document.createElement('select');
-    modelSelect.className = 'message-model';
-    
-    // Add default model options for OpenAI
-    updateModelOptions(modelSelect, provider || 'openai');
-    
-    // Set selected model if provided
-    if (model) {
-        modelSelect.value = model;
-    }
-    
-    modelContainer.appendChild(modelLabel);
-    modelContainer.appendChild(modelSelect);
-    
-    // Add event listener to update model options when provider changes
-    providerSelect.addEventListener('change', function() {
-        updateModelOptions(modelSelect, this.value);
-    });
-
-    // Create custom model input (new)
-const customModelContainer = document.createElement('div');
-customModelContainer.className = 'custom-model-container';
-customModelContainer.style.display = 'none'; // Hidden by default
-
-const customModelLabel = document.createElement('label');
-customModelLabel.textContent = 'Custom Model ID:';
-
-const customModelInput = document.createElement('input');
-customModelInput.type = 'text';
-customModelInput.className = 'custom-model-input';
-customModelInput.placeholder = 'Enter model ID (e.g., gpt-4-1106-preview)';
-
-customModelContainer.appendChild(customModelLabel);
-customModelContainer.appendChild(customModelInput);
-
-// Add event listener to show/hide custom model input based on model selection
-modelSelect.addEventListener('change', function() {
-    customModelContainer.style.display = this.value === 'custom' ? 'block' : 'none';
-});
-
-// If a custom model was previously saved, select the custom option and show the input
-if (model && !['gpt-3.5-turbo', 'gpt-4', 'gpt-4-turbo', 'openai/gpt-3.5-turbo', 'openai/gpt-4', 
-    'anthropic/claude-3-opus', 'anthropic/claude-3-sonnet', 'anthropic/claude-3-haiku', 
-    'meta-llama/llama-3-70b-instruct', 'meta-llama/llama-3-8b-instruct'].includes(model)) {
-    
-    modelSelect.value = 'custom';
-    customModelInput.value = model;
-    customModelContainer.style.display = 'block';
-}
-    
-    // Create message-specific context input
+    // Create message-specific context input (new)
     const contextContainer = document.createElement('div');
     contextContainer.className = 'message-context-container';
     contextContainer.style.display = useLLM ? 'block' : 'none';
@@ -682,12 +504,9 @@ if (model && !['gpt-3.5-turbo', 'gpt-4', 'gpt-4-turbo', 'openai/gpt-3.5-turbo', 
     contextContainer.appendChild(contextLabel);
     contextContainer.appendChild(contextInput);
     
-    // Add event listener to show/hide AI settings based on checkbox
+    // Add event listener to show/hide context based on checkbox
     llmCheckbox.addEventListener('change', function() {
-        const display = this.checked ? 'block' : 'none';
-        contextContainer.style.display = display;
-        providerContainer.style.display = display;
-        modelContainer.style.display = display;
+        contextContainer.style.display = this.checked ? 'block' : 'none';
     });
     
     // Create action buttons
@@ -711,10 +530,7 @@ if (model && !['gpt-3.5-turbo', 'gpt-4', 'gpt-4-turbo', 'openai/gpt-3.5-turbo', 
     container.appendChild(intervalContainer);
     container.appendChild(selectorContainer);
     container.appendChild(llmContainer);
-    container.appendChild(providerContainer);
-    container.appendChild(modelContainer);
-    container.appendChild(customModelContainer); // Add the custom model container
-    container.appendChild(contextContainer);
+    container.appendChild(contextContainer); // Add the context container
     container.appendChild(actionsDiv);
     
     // Add to DOM
@@ -755,48 +571,6 @@ if (model && !['gpt-3.5-turbo', 'gpt-4', 'gpt-4-turbo', 'openai/gpt-3.5-turbo', 
         }, 3000);
     });
 }
-
-
-// Helper function to update model options based on selected provider
-function updateModelOptions(modelSelect, provider) {
-    // Clear existing options
-    modelSelect.innerHTML = '';
-    
-    // Add options based on provider
-    if (provider === 'openai') {
-        const models = [
-            { value: 'gpt-3.5-turbo', text: 'GPT-3.5 Turbo' },
-            { value: 'gpt-4', text: 'GPT-4' },
-            { value: 'gpt-4-turbo', text: 'GPT-4 Turbo' },
-            { value: 'custom', text: '-- Custom Model --' }
-        ];
-        
-        models.forEach(model => {
-            const option = document.createElement('option');
-            option.value = model.value;
-            option.textContent = model.text;
-            modelSelect.appendChild(option);
-        });
-    } else if (provider === 'openrouter') {
-        const models = [
-            { value: 'openai/gpt-3.5-turbo', text: 'OpenAI GPT-3.5 Turbo' },
-            { value: 'openai/gpt-4', text: 'OpenAI GPT-4' },
-            { value: 'anthropic/claude-3-opus', text: 'Claude 3 Opus' },
-            { value: 'anthropic/claude-3-sonnet', text: 'Claude 3 Sonnet' },
-            { value: 'anthropic/claude-3-haiku', text: 'Claude 3 Haiku' },
-            { value: 'meta-llama/llama-3-70b-instruct', text: 'Llama 3 70B' },
-            { value: 'meta-llama/llama-3-8b-instruct', text: 'Llama 3 8B' },
-            { value: 'custom', text: '-- Custom Model --' }
-        ];
-        
-        models.forEach(model => {
-            const option = document.createElement('option');
-            option.value = model.value;
-            option.textContent = model.text;
-            modelSelect.appendChild(option);
-        });
-    }
-}
     
     // Function to get all messages from the UI
     function getAllMessages() {
@@ -805,38 +579,16 @@ function updateModelOptions(modelSelect, provider) {
         messageContainers.forEach(container => {
             const messageTextarea = container.querySelector('.message-textarea');
             const intervalInput = container.querySelector('.interval-input');
-            const intervalTypeSelect = container.querySelector('.interval-type-select');
-            const minIntervalInput = container.querySelector('.min-interval-input');
-            const maxIntervalInput = container.querySelector('.max-interval-input');
             const selectorInput = container.querySelector('.chat-selector');
             const useLLMCheckbox = container.querySelector('.use-llm-checkbox');
             const contextInput = container.querySelector('.message-context');
-            const providerSelect = container.querySelector('.message-provider');
-            const modelSelect = container.querySelector('.message-model');
-            const customModelInput = container.querySelector('.custom-model-input');
-            
-            // Determine the model to use
-            let modelValue = modelSelect ? modelSelect.value : '';
-            if (modelValue === 'custom' && customModelInput && customModelInput.value.trim()) {
-                modelValue = customModelInput.value.trim();
-            }
-            
-            // Get interval type and values
-            const intervalType = intervalTypeSelect ? intervalTypeSelect.value : 'minutes';
-            const minInterval = minIntervalInput ? parseInt(minIntervalInput.value) || 30 : 30;
-            const maxInterval = maxIntervalInput ? parseInt(maxIntervalInput.value) || 120 : 120;
             
             messages.push({
                 text: messageTextarea.value,
                 interval: parseInt(intervalInput.value) || 15,
-                intervalType: intervalType,
-                minInterval: minInterval,
-                maxInterval: maxInterval,
                 selector: selectorInput.value,
                 useLLM: useLLMCheckbox.checked,
-                context: contextInput ? contextInput.value : '',
-                provider: providerSelect ? providerSelect.value : '',
-                model: modelValue
+                context: contextInput ? contextInput.value : '' // Include the context
             });
         });
         

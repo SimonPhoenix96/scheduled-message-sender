@@ -485,11 +485,6 @@ const randomRangeContainer = document.createElement('div');
 randomRangeContainer.className = 'random-range-container';
 randomRangeContainer.style.display = intervalTypeSelect.value === 'random' ? 'flex' : 'none';
 
-
-intervalInput.style.display = intervalTypeSelect.value === 'random' ? 'none' : 'inline-block';
-intervalLabel.style.display = intervalTypeSelect.value === 'random' ? 'none' : 'inline-block';
-
-
 const minLabel = document.createElement('label');
 minLabel.textContent = 'Min (sec):';
 minLabel.style.marginRight = '5px';

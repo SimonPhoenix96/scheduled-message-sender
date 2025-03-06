@@ -156,10 +156,7 @@ if (activeTabs[currentTabId].messages && activeTabs[currentTabId].messages.lengt
             message.useLLM,
             message.context || '',
             message.provider || '',
-            message.model || '',
-            message.intervalType || 'minutes',
-            message.minInterval || 30,
-            message.maxInterval || 120
+            message.model || ''
         );
     });
 } else {
@@ -428,7 +425,8 @@ if (activeTabs[currentTabId].messages && activeTabs[currentTabId].messages.lengt
   });
 
 // Function to add a message container
-function addMessageContainer(text = '', interval = 15, selector = '', useLLM = false, context = '', provider = '', model = '', intervalType = 'minutes', minInterval = 30, maxInterval = 120) {
+// Function to add a message container
+function addMessageContainer(text = '', interval = 15, selector = '', useLLM = false, context = '', provider = '', model = '') {
     const messagesContainer = document.getElementById('messagesContainer');
     
     // Create container
@@ -444,104 +442,21 @@ function addMessageContainer(text = '', interval = 15, selector = '', useLLM = f
     messageTextarea.value = text;
     messageTextarea.rows = 3;
     
-// Create interval input
-const intervalContainer = document.createElement('div');
-intervalContainer.className = 'message-interval-container';
-
-const intervalLabel = document.createElement('label');
-intervalLabel.textContent = 'Interval:';
-
-const intervalInput = document.createElement('input');
-intervalInput.type = 'number';
-intervalInput.className = 'interval-input';
-intervalInput.value = interval;
-intervalInput.min = 1;
-
-// Create interval type selector
-const intervalTypeSelect = document.createElement('select');
-intervalTypeSelect.className = 'interval-type-select';
-const typeOptions = [
-    { value: 'minutes', text: 'Minutes' },
-    { value: 'seconds', text: 'Seconds' },
-    { value: 'random', text: 'Random' }
-];
-
-typeOptions.forEach(option => {
-    const optionElement = document.createElement('option');
-    optionElement.value = option.value;
-    optionElement.textContent = option.text;
-    intervalTypeSelect.appendChild(optionElement);
-});
-
-// Set the selected type if provided
-if (typeof intervalType === 'string') {
-    intervalTypeSelect.value = intervalType;
-} else {
-    intervalTypeSelect.value = 'minutes'; // Default
-}
-
-// Create random interval range container (hidden by default)
-const randomRangeContainer = document.createElement('div');
-randomRangeContainer.className = 'random-range-container';
-randomRangeContainer.style.display = intervalTypeSelect.value === 'random' ? 'flex' : 'none';
-
-
-intervalInput.style.display = intervalTypeSelect.value === 'random' ? 'none' : 'inline-block';
-intervalLabel.style.display = intervalTypeSelect.value === 'random' ? 'none' : 'inline-block';
-
-
-const minLabel = document.createElement('label');
-minLabel.textContent = 'Min (sec):';
-minLabel.style.marginRight = '5px';
-
-const minInput = document.createElement('input');
-minInput.type = 'number';
-minInput.className = 'min-interval-input';
-minInput.value = minInterval || 30;
-minInput.min = 1;
-minInput.style.width = '60px';
-minInput.style.marginRight = '10px';
-
-const maxLabel = document.createElement('label');
-maxLabel.textContent = 'Max (sec):';
-maxLabel.style.marginRight = '5px';
-
-const maxInput = document.createElement('input');
-maxInput.type = 'number';
-maxInput.className = 'max-interval-input';
-maxInput.value = maxInterval || 120;
-maxInput.min = 2;
-maxInput.style.width = '60px';
-
-// Clear the container before adding elements to prevent duplicates
-randomRangeContainer.innerHTML = '';
-
-// Add elements to the container
-randomRangeContainer.appendChild(minLabel);
-randomRangeContainer.appendChild(minInput);
-randomRangeContainer.appendChild(maxLabel);
-randomRangeContainer.appendChild(maxInput);
-
-// Add event listener to show/hide random range inputs
-intervalTypeSelect.addEventListener('change', function() {
-    // Show/hide random range inputs
-    randomRangeContainer.style.display = this.value === 'random' ? 'flex' : 'none';
+    // Create interval input
+    const intervalContainer = document.createElement('div');
+    intervalContainer.className = 'message-interval-container';
     
-    // Show/hide the regular interval input based on selection
-    intervalInput.style.display = this.value === 'random' ? 'none' : 'inline-block';
-    intervalLabel.style.display = this.value === 'random' ? 'none' : 'inline-block';
-});
-
-// Make sure the interval container has proper styling
-intervalContainer.style.display = 'flex';
-intervalContainer.style.flexWrap = 'wrap';
-intervalContainer.style.alignItems = 'center';
-
-// Add the random range container to the interval container
-intervalContainer.appendChild(intervalLabel);
-intervalContainer.appendChild(intervalInput);
-intervalContainer.appendChild(intervalTypeSelect);
-intervalContainer.appendChild(randomRangeContainer);
+    const intervalLabel = document.createElement('label');
+    intervalLabel.textContent = 'Interval (minutes):';
+    
+    const intervalInput = document.createElement('input');
+    intervalInput.type = 'number';
+    intervalInput.className = 'interval-input';
+    intervalInput.value = interval;
+    intervalInput.min = 1;
+    
+    intervalContainer.appendChild(intervalLabel);
+    intervalContainer.appendChild(intervalInput);
     
     // Create chat selector input
     const selectorContainer = document.createElement('div');
@@ -799,49 +714,31 @@ function updateModelOptions(modelSelect, provider) {
 }
     
     // Function to get all messages from the UI
-    function getAllMessages() {
-        const messages = [];
+function getAllMessages() {
+    const messages = [];
+    
+    messageContainers.forEach(container => {
+        const messageTextarea = container.querySelector('.message-textarea');
+        const intervalInput = container.querySelector('.interval-input');
+        const selectorInput = container.querySelector('.chat-selector');
+        const useLLMCheckbox = container.querySelector('.use-llm-checkbox');
+        const contextInput = container.querySelector('.message-context');
+        const providerSelect = container.querySelector('.message-provider');
+        const modelSelect = container.querySelector('.message-model');
         
-        messageContainers.forEach(container => {
-            const messageTextarea = container.querySelector('.message-textarea');
-            const intervalInput = container.querySelector('.interval-input');
-            const intervalTypeSelect = container.querySelector('.interval-type-select');
-            const minIntervalInput = container.querySelector('.min-interval-input');
-            const maxIntervalInput = container.querySelector('.max-interval-input');
-            const selectorInput = container.querySelector('.chat-selector');
-            const useLLMCheckbox = container.querySelector('.use-llm-checkbox');
-            const contextInput = container.querySelector('.message-context');
-            const providerSelect = container.querySelector('.message-provider');
-            const modelSelect = container.querySelector('.message-model');
-            const customModelInput = container.querySelector('.custom-model-input');
-            
-            // Determine the model to use
-            let modelValue = modelSelect ? modelSelect.value : '';
-            if (modelValue === 'custom' && customModelInput && customModelInput.value.trim()) {
-                modelValue = customModelInput.value.trim();
-            }
-            
-            // Get interval type and values
-            const intervalType = intervalTypeSelect ? intervalTypeSelect.value : 'minutes';
-            const minInterval = minIntervalInput ? parseInt(minIntervalInput.value) || 30 : 30;
-            const maxInterval = maxIntervalInput ? parseInt(maxIntervalInput.value) || 120 : 120;
-            
-            messages.push({
-                text: messageTextarea.value,
-                interval: parseInt(intervalInput.value) || 15,
-                intervalType: intervalType,
-                minInterval: minInterval,
-                maxInterval: maxInterval,
-                selector: selectorInput.value,
-                useLLM: useLLMCheckbox.checked,
-                context: contextInput ? contextInput.value : '',
-                provider: providerSelect ? providerSelect.value : '',
-                model: modelValue
-            });
+        messages.push({
+            text: messageTextarea.value,
+            interval: parseInt(intervalInput.value) || 15,
+            selector: selectorInput.value,
+            useLLM: useLLMCheckbox.checked,
+            context: contextInput ? contextInput.value : '',
+            provider: providerSelect ? providerSelect.value : '',
+            model: modelSelect ? modelSelect.value : ''
         });
-        
-        return messages;
-    }
+    });
+    
+    return messages;
+}
     
     // Function to save all messages to storage
     function saveAllMessages() {

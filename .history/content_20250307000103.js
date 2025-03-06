@@ -397,7 +397,6 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
         request.messages.forEach((messageObj, index) => {
           // Initialize message index counter
           messageIndices[index] = 0;
-          
 // Get the message-specific interval type or use default
 const intervalType = messageObj.intervalType || 'minutes';
 
@@ -488,17 +487,11 @@ const id = setInterval(() => {
   }
 }, intervalMs);
           
-          // Store the interval ID
-          intervalIds.push(id);
-          
 // Store message data
 messageData.push({
     text: messageObj.text,
     selector: selector,
     interval: messageObj.interval,
-    intervalType: messageObj.intervalType || 'minutes',
-    minInterval: messageObj.minInterval || 30,
-    maxInterval: messageObj.maxInterval || 120,
     useLLM: messageObj.useLLM,
     context: messageObj.context || '',
     provider: messageObj.provider || '',

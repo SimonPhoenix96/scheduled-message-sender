@@ -10,7 +10,6 @@ let messageData = [];
 let isActive = false;
 
 
-
 // Add at the top of content.js
 console.log('Scheduled Message Sender content script loaded');
 
@@ -398,95 +397,17 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
           // Initialize message index counter
           messageIndices[index] = 0;
           
-// Get the message-specific interval type or use default
-const intervalType = messageObj.intervalType || 'minutes';
-
-// Calculate interval in milliseconds based on type
-let intervalMs;
-if (intervalType === 'random') {
-  // For random intervals, calculate a random value between min and max
-  const minMs = (messageObj.minInterval || 30) * 1000; // Convert seconds to ms
-  const maxMs = (messageObj.maxInterval || 120) * 1000; // Convert seconds to ms
-  intervalMs = Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs;
-  console.log('Message', index, 'using random interval between', 
-              messageObj.minInterval || 30, 'and', messageObj.maxInterval || 120, 'seconds');
-} else if (intervalType === 'seconds') {
-  intervalMs = messageObj.interval * 1000;
-  console.log('Message', index, 'interval:', messageObj.interval, 'seconds');
-} else {
-  // Default to minutes
-  intervalMs = messageObj.interval * 60 * 1000;
-  console.log('Message', index, 'interval:', messageObj.interval, 'minutes');
-}
-
-// Use message-specific selector or fall back to default
-const selector = messageObj.selector || defaultSelector;
-
-// Create interval for this message
-const id = setInterval(() => {
-  // For random intervals, we need to recalculate the interval after each post
-  if (intervalType === 'random') {
-    clearInterval(id); // Clear the current interval
-    
-    // Post the message
-    postDonationMessage(messageObj.text, selector, true, true, messageObj.useLLM);
-    
-    // Set a new timeout with a random interval
-    const newMinMs = (messageObj.minInterval || 30) * 1000;
-    const newMaxMs = (messageObj.maxInterval || 120) * 1000;
-    const newIntervalMs = Math.floor(Math.random() * (newMaxMs - newMinMs + 1)) + newMinMs;
-    
-    // Create a new interval with the random time
-    const newId = setTimeout(() => {
-      const recurringId = setInterval(() => {
-        // For each recurring interval, we'll need to handle random intervals again
-        if (intervalType === 'random') {
-          clearInterval(recurringId);
-          postDonationMessage(messageObj.text, selector, true, true, messageObj.useLLM);
+          // Convert minutes to milliseconds
+          const intervalMs = messageObj.interval * 60 * 1000;
+          console.log('Message', index, 'interval:', messageObj.interval, 'minutes');
           
-          // Create a new random interval
-          const nextId = setTimeout(() => {
-            // This creates a new interval that replaces the old one
-            const nextRecurringId = setInterval(() => {
-              if (intervalType === 'random') {
-                // Continue the pattern for future intervals
-                clearInterval(nextRecurringId);
-                postDonationMessage(messageObj.text, selector, true, true, messageObj.useLLM);
-                // ... and so on (this creates a recursive pattern)
-              } else {
-                postDonationMessage(messageObj.text, selector, true, true, messageObj.useLLM);
-              }
-            }, intervalMs);
-            
-            // Update the interval ID in our tracking array
-            const oldIdIndex = intervalIds.indexOf(recurringId);
-            if (oldIdIndex !== -1) {
-              intervalIds[oldIdIndex] = nextRecurringId;
-            }
-          }, Math.floor(Math.random() * (newMaxMs - newMinMs + 1)) + newMinMs);
+          // Use message-specific selector or fall back to default
+          const selector = messageObj.selector || defaultSelector;
           
-          intervalIds.push(nextId);
-        } else {
-          postDonationMessage(messageObj.text, selector, true, true, messageObj.useLLM);
-        }
-      }, intervalMs);
-      
-      // Replace the old interval ID with the new one
-      const oldIdIndex = intervalIds.indexOf(id);
-      if (oldIdIndex !== -1) {
-        intervalIds[oldIdIndex] = recurringId;
-      } else {
-        intervalIds.push(recurringId);
-      }
-    }, newIntervalMs);
-    
-    // Store the timeout ID
-    intervalIds.push(newId);
-  } else {
-    // Regular interval, just post the message
-    postDonationMessage(messageObj.text, selector, true, true, messageObj.useLLM);
-  }
-}, intervalMs);
+          // Create interval for this message
+          const id = setInterval(() => {
+            postDonationMessage(messageObj.text, selector, true, true, messageObj.useLLM);
+          }, intervalMs);
           
           // Store the interval ID
           intervalIds.push(id);
@@ -496,9 +417,6 @@ messageData.push({
     text: messageObj.text,
     selector: selector,
     interval: messageObj.interval,
-    intervalType: messageObj.intervalType || 'minutes',
-    minInterval: messageObj.minInterval || 30,
-    maxInterval: messageObj.maxInterval || 120,
     useLLM: messageObj.useLLM,
     context: messageObj.context || '',
     provider: messageObj.provider || '',
