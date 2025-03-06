@@ -720,4 +720,3 @@ function addMessageContainer(text = '', interval = 15, selector = '', useLLM = f
             });
         });
     }
-});  

@@ -416,308 +416,381 @@ function addMessageContainer(text = '', interval = 15, selector = '', useLLM = f
     messageTextarea.className = 'message-textarea';
     messageTextarea.value = text;
     messageTextarea.rows = 3;
-        // Create interval input
-        const intervalContainer = document.createElement('div');
-        intervalContainer.className = 'message-interval-container';
-        
-        const intervalLabel = document.createElement('label');
-        intervalLabel.textContent = 'Interval (minutes):';
-        
-        const intervalInput = document.createElement('input');
-        intervalInput.type = 'number';
-        intervalInput.className = 'interval-input';
-        intervalInput.value = interval;
-        intervalInput.min = 1;
-        
-        intervalContainer.appendChild(intervalLabel);
-        intervalContainer.appendChild(intervalInput);
-        
-        // Create chat selector input
-        const selectorContainer = document.createElement('div');
-        selectorContainer.className = 'message-selector-container';
-        
-        const selectorLabel = document.createElement('label');
-        selectorLabel.textContent = 'Chat Selector (optional):';
-        
-        const selectorInput = document.createElement('input');
-        selectorInput.type = 'text';
-        selectorInput.className = 'chat-selector';
-        selectorInput.value = selector;
-        selectorInput.placeholder = 'CSS selector for chat input';
-        
-        selectorContainer.appendChild(selectorLabel);
-        selectorContainer.appendChild(selectorInput);
-        
-        // Create LLM checkbox
-        const llmContainer = document.createElement('div');
-        llmContainer.className = 'form-group checkbox-group';
-        
-        const llmCheckbox = document.createElement('input');
-        llmCheckbox.type = 'checkbox';
-        llmCheckbox.className = 'use-llm-checkbox';
-        llmCheckbox.checked = useLLM;
-        
-        const llmLabel = document.createElement('label');
-        llmLabel.textContent = 'Process with AI before sending';
-        
-        llmContainer.appendChild(llmCheckbox);
-        llmContainer.appendChild(llmLabel);
-        
-        // Create action buttons
-        const actionsDiv = document.createElement('div');
-        actionsDiv.className = 'message-actions';
-        
-        const saveButton = document.createElement('button');
-        saveButton.className = 'save-message-btn';
-        saveButton.textContent = 'Save Message';
-        
-        const removeButton = document.createElement('button');
-        removeButton.className = 'remove-message-btn';
-        removeButton.textContent = 'Remove';
-        
-        actionsDiv.appendChild(saveButton);
-        actionsDiv.appendChild(removeButton);
-        
-        // Assemble container
-        container.appendChild(messageLabel);
-        container.appendChild(messageTextarea);
-        container.appendChild(intervalContainer);
-        container.appendChild(selectorContainer);
-        container.appendChild(llmContainer);
-        container.appendChild(actionsDiv);
-        
-        // Add to DOM
-        messagesContainer.appendChild(container);
-        
-        // Add to our array of containers
-        messageContainers.push(container);
-        
-        // Add event listeners
-        removeButton.addEventListener('click', function() {
-            messagesContainer.removeChild(container);
-            const index = messageContainers.indexOf(container);
-            if (index > -1) {
-                messageContainers.splice(index, 1);
-            }
-        });
-        
-        saveButton.addEventListener('click', function() {
-            // Save this message to storage
-            saveAllMessages();
-            
-            // Show success message
-            statusDiv.textContent = 'Message saved';
-            statusDiv.className = 'status active';
-            
-            // Reset status after 3 seconds
-            setTimeout(() => {
-                chrome.storage.local.get('activeTabs', function(data) {
-                    const isActive = data.activeTabs && data.activeTabs[currentTabId];
-                    if (isActive) {
-                        statusDiv.textContent = 'Status: Active';
-                        statusDiv.className = 'status active';
-                    } else {
-                        statusDiv.textContent = 'Status: Inactive';
-                        statusDiv.className = 'status inactive';
-                    }
-                });
-            }, 3000);
-        });
-    }
     
-    // Function to get all messages from the UI
-    function getAllMessages() {
-        const messages = [];
+    // Create interval input
+    const intervalContainer = document.createElement('div');
+    intervalContainer.className = 'message-interval-container';
+    
+    const intervalLabel = document.createElement('label');
+    intervalLabel.textContent = 'Interval (minutes):';
+    
+    const intervalInput = document.createElement('input');
+    intervalInput.type = 'number';
+    intervalInput.className = 'interval-input';
+    intervalInput.value = interval;
+    intervalInput.min = 1;
+    
+    intervalContainer.appendChild(intervalLabel);
+    intervalContainer.appendChild(intervalInput);
+    
+    // Create chat selector input
+    const selectorContainer = document.createElement('div');
+    selectorContainer.className = 'message-selector-container';
+    
+    const selectorLabel = document.createElement('label');
+    selectorLabel.textContent = 'Chat Selector (optional):';
+    
+    const selectorInput = document.createElement('input');
+    selectorInput.type = 'text';
+    selectorInput.className = 'chat-selector';
+    selectorInput.value = selector;
+    selectorInput.placeholder = 'CSS selector for chat input';
+    
+    selectorContainer.appendChild(selectorLabel);
+    selectorContainer.appendChild(selectorInput);
+    
+    // Create LLM checkbox
+    const llmContainer = document.createElement('div');
+    llmContainer.className = 'form-group checkbox-group';
+    
+    const llmCheckbox = document.createElement('input');
+    llmCheckbox.type = 'checkbox';
+    llmCheckbox.className = 'use-llm-checkbox';
+    llmCheckbox.checked = useLLM;
+    
+    const llmLabel = document.createElement('label');
+    llmLabel.textContent = 'Process with AI before sending';
+    
+    llmContainer.appendChild(llmCheckbox);
+    llmContainer.appendChild(llmLabel);
+    
+    // Create action buttons
+    const actionsDiv = document.createElement('div');
+    actionsDiv.className = 'message-actions';
+    
+    const saveButton = document.createElement('button');
+    saveButton.className = 'save-message-btn';
+    saveButton.textContent = 'Save Message';
+    
+    const removeButton = document.createElement('button');
+    removeButton.className = 'remove-message-btn';
+    removeButton.textContent = 'Remove';
+    
+    actionsDiv.appendChild(saveButton);
+    actionsDiv.appendChild(removeButton);
+    
+    // Assemble container
+    container.appendChild(messageLabel);
+    container.appendChild(messageTextarea);
+    container.appendChild(intervalContainer);
+    container.appendChild(selectorContainer);
+    container.appendChild(llmContainer);
+    container.appendChild(actionsDiv);
+    
+    // Add to DOM
+    messagesContainer.appendChild(container);
+    
+    // Add to our array of containers
+    messageContainers.push(container);
+    
+    // Add event listeners
+    removeButton.addEventListener('click', function() {
+        messagesContainer.removeChild(container);
+        const index = messageContainers.indexOf(container);
+        if (index > -1) {
+            messageContainers.splice(index, 1);
+        }
+    });
+    
+    saveButton.addEventListener('click', function() {
+        // Save this message to storage
+        saveAllMessages();
         
-        messageContainers.forEach(container => {
-            const messageTextarea = container.querySelector('.message-textarea');
-            const intervalInput = container.querySelector('.interval-input');
-            const selectorInput = container.querySelector('.chat-selector');
-            const useLLMCheckbox = container.querySelector('.use-llm-checkbox');
-            
-            messages.push({
-                text: messageTextarea.value,
-                interval: parseInt(intervalInput.value) || 15,
-                selector: selectorInput.value,
-                useLLM: useLLMCheckbox.checked
+        // Show success message
+        statusDiv.textContent = 'Message saved';
+        statusDiv.className = 'status active';
+        
+        // Reset status after 3 seconds
+        setTimeout(() => {
+            chrome.storage.local.get('activeTabs', function(data) {
+                const isActive = data.activeTabs && data.activeTabs[currentTabId];
+                if (isActive) {
+                    statusDiv.textContent = 'Status: Active';
+                    statusDiv.className = 'status active';
+                } else {
+                    statusDiv.textContent = 'Status: Inactive';
+                    statusDiv.className = 'status inactive';
+                }
             });
-        });
+        }, 3000);
+    });
+}
+
+// Function to get all messages from the UI
+function getAllMessages() {
+    const messages = [];
+    
+    messageContainers.forEach(container => {
+        const messageTextarea = container.querySelector('.message-textarea');
+        const intervalInput = container.querySelector('.interval-input');
+        const selectorInput = container.querySelector('.chat-selector');
+        const useLLMCheckbox = container.querySelector('.use-llm-checkbox');
         
-        return messages;
+        messages.push({
+            text: messageTextarea.value,
+            interval: parseInt(intervalInput.value) || 15,
+            selector: selectorInput.value,
+            useLLM: useLLMCheckbox.checked
+        });
+    });
+    
+    return messages;
+}
+
+// Function to save all messages to storage
+function saveAllMessages() {
+    const messages = getAllMessages();
+    
+    chrome.storage.local.get('activeTabs', function(data) {
+        const activeTabs = data.activeTabs || {};
+        
+        // If this tab is already active, update its messages
+        if (activeTabs[currentTabId]) {
+            activeTabs[currentTabId].messages = messages;
+        } else {
+            // Otherwise create a new entry
+            activeTabs[currentTabId] = {
+                url: currentTabUrl,
+                title: currentTabTitle,
+                messages: messages,
+                llmSettings: {
+                    provider: llmProviderSelect.value,
+                    apiKey: apiKeyInput.value,
+                    context: contextPromptInput.value
+                }
+            };
+        }
+        
+        chrome.storage.local.set({activeTabs: activeTabs});
+    });
+}
+
+// Function to start posting messages
+function startPosting() {
+    // Get all messages
+    const messages = getAllMessages();
+    
+    // Validate that we have at least one message
+    if (messages.length === 0) {
+        statusDiv.textContent = 'Error: Please add at least one message';
+        statusDiv.className = 'status inactive';
+        return;
     }
     
-    // Function to save all messages to storage
-    function saveAllMessages() {
-        const messages = getAllMessages();
-        
-        chrome.storage.local.get('activeTabs', function(data) {
-            const activeTabs = data.activeTabs || {};
+    // Save current settings
+    chrome.storage.local.set({
+        defaultInterval: document.querySelector('.interval-input').value,
+        defaultSelector: document.querySelector('.chat-selector').value || '#chat-input-wrapper > div > div.editor-input > p'
+    });
+    
+    // First ensure content script is loaded
+    chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+        chrome.scripting.executeScript({
+            target: {tabId: tabs[0].id},
+            files: ['content.js']
+        }).then(() => {
+            console.log('Content script injected');
             
-            // If this tab is already active, update its messages
-            if (activeTabs[currentTabId]) {
-                activeTabs[currentTabId].messages = messages;
-            } else {
-                // Otherwise create a new entry
-                activeTabs[currentTabId] = {
-                    url: currentTabUrl,
-                    title: currentTabTitle,
+            // Now start the posting
+            setTimeout(() => {
+                chrome.tabs.sendMessage(tabs[0].id, {
+                    action: 'start',
                     messages: messages,
+                    chatSelector: document.querySelector('.chat-selector').value,
+                    enableNotifications: enableNotificationsCheckbox.checked,
                     llmSettings: {
                         provider: llmProviderSelect.value,
                         apiKey: apiKeyInput.value,
                         context: contextPromptInput.value
                     }
-                };
-            }
-            
-            chrome.storage.local.set({activeTabs: activeTabs});
-        });
-    }
-    
-    // Function to start posting messages
-    function startPosting() {
-        // Get all messages
-        const messages = getAllMessages();
-        
-        // Validate that we have at least one message
-        if (messages.length === 0) {
-            statusDiv.textContent = 'Error: Please add at least one message';
+                }, function(response) {
+                    if (chrome.runtime.lastError) {
+                        statusDiv.textContent = 'Error: ' + chrome.runtime.lastError.message;
+                        statusDiv.className = 'status inactive';
+                    } else if (response && response.success) {
+                        // Update UI
+                        toggleButton.textContent = 'Stop Posting';
+                        toggleButton.className = 'stop';
+                        statusDiv.textContent = 'Status: Active';
+                        statusDiv.className = 'status active';
+                        
+                        // Save to storage
+                        saveAllMessages();
+                        
+                        // Update active tabs list
+                        updateActiveTabsList();
+                    } else {
+                        statusDiv.textContent = 'Error: Failed to start posting';
+                        statusDiv.className = 'status inactive';
+                    }
+                });
+            }, 500); // Add delay to ensure content script is loaded
+        }).catch(err => {
+            console.error('Failed to inject content script:', err);
+            statusDiv.textContent = 'Error injecting content script: ' + err.message;
             statusDiv.className = 'status inactive';
+        });
+    });
+}
+
+// Function to stop posting messages
+function stopPosting() {
+    chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+        chrome.tabs.sendMessage(tabs[0].id, {action: 'stop'}, function(response) {
+            if (chrome.runtime.lastError) {
+                console.error('Error stopping posting:', chrome.runtime.lastError.message);
+                // Still update UI even if there's an error
+                updateUIAfterStop();
+            } else if (response && response.success) {
+                updateUIAfterStop();
+            } else {
+                console.error('Unknown error stopping posting');
+                updateUIAfterStop();
+            }
+        });
+    });
+}
+
+// Helper function to update UI after stopping
+function updateUIAfterStop() {
+    // Update UI
+    toggleButton.textContent = 'Start Posting';
+    toggleButton.className = '';
+    statusDiv.textContent = 'Status: Inactive';
+    statusDiv.className = 'status inactive';
+    
+    // Remove from storage
+    chrome.storage.local.get('activeTabs', function(data) {
+        const activeTabs = data.activeTabs || {};
+        
+        if (activeTabs[currentTabId]) {
+            delete activeTabs[currentTabId];
+            chrome.storage.local.set({activeTabs: activeTabs}, function() {
+                // Update active tabs list
+                updateActiveTabsList();
+            });
+        }
+    });
+}
+
+// Function to update the active tabs list
+function updateActiveTabsList() {
+    chrome.storage.local.get('activeTabs', function(data) {
+        const activeTabs = data.activeTabs || {};
+        const activeTabsList = document.getElementById('activeTabsList');
+        
+        // Clear current list
+        activeTabsList.innerHTML = '';
+        
+        // Check if we have any active tabs
+        const tabIds = Object.keys(activeTabs);
+        if (tabIds.length === 0) {
+            activeTabsList.textContent = 'No active streams';
             return;
         }
         
-        // Save current settings
-        chrome.storage.local.set({
-            defaultInterval: document.querySelector('.interval-input').value,
-            defaultSelector: document.querySelector('.chat-selector').value || '#chat-input-wrapper > div > div.editor-input > p'
-        });
-        
-        // First ensure content script is loaded
-        chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
-            chrome.scripting.executeScript({
-                target: {tabId: tabs[0].id},
-                files: ['content.js']
-            }).then(() => {
-                console.log('Content script injected');
-                
-                // Now start the posting
-                setTimeout(() => {
-                    chrome.tabs.sendMessage(tabs[0].id, {
-                        action: 'start',
-                        messages: messages,
-                        chatSelector: document.querySelector('.chat-selector').value,
-                        enableNotifications: enableNotificationsCheckbox.checked,
-                        llmSettings: {
-                            provider: llmProviderSelect.value,
-                            apiKey: apiKeyInput.value,
-                            context: contextPromptInput.value
-                        }
-                    }, function(response) {
-                        if (chrome.runtime.lastError) {
-                            statusDiv.textContent = 'Error: ' + chrome.runtime.lastError.message;
-                            statusDiv.className = 'status inactive';
-                        } else if (response && response.success) {
-                            // Update UI
-                            toggleButton.textContent = 'Stop Posting';
-                            toggleButton.className = 'stop';
-                            statusDiv.textContent = 'Status: Active';
-                            statusDiv.className = 'status active';
-                            
-                            // Save to storage
-                            saveAllMessages();
-                            
-                            // Update active tabs list
-                            updateActiveTabsList();
-                        } else {
-                            statusDiv.textContent = 'Error: Failed to start posting';
-                            statusDiv.className = 'status inactive';
-                        }
-                    });
-                }, 500); // Add delay to ensure content script is loaded
-            }).catch(err => {
-                console.error('Failed to inject content script:', err);
-                statusDiv.textContent = 'Error injecting content script: ' + err.message;
-                statusDiv.className = 'status inactive';
+        // Add each active tab to the list
+        tabIds.forEach(tabId => {
+            const tabInfo = activeTabs[tabId];
+            
+            const tabItem = document.createElement('div');
+            tabItem.className = 'active-tab-item';
+            
+            const tabTitle = document.createElement('span');
+            tabTitle.textContent = tabInfo.title || 'Unknown Stream';
+            
+            const switchButton = document.createElement('button');
+            switchButton.textContent = 'Switch';
+            switchButton.addEventListener('click', function() {
+                chrome.tabs.update(parseInt(tabId), {active: true});
             });
+            
+            tabItem.appendChild(tabTitle);
+            tabItem.appendChild(switchButton);
+            activeTabsList.appendChild(tabItem);
         });
-    }
+    });
+}
+
+// Test button click handler
+testButton.addEventListener('click', function() {
+    // Get all messages
+    const messages = getAllMessages();
     
-    // Function to stop posting messages
-    function stopPosting() {
-        chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
-            chrome.tabs.sendMessage(tabs[0].id, {action: 'stop'}, function(response) {
-                if (chrome.runtime.lastError) {
-                    console.error('Error stopping posting:', chrome.runtime.lastError.message);
-                    // Still update UI even if there's an error
-                    updateUIAfterStop();
-                } else if (response && response.success) {
-                    updateUIAfterStop();
-                } else {
-                    console.error('Unknown error stopping posting');
-                    updateUIAfterStop();
-                }
-            });
-        });
-    }
-    
-    // Helper function to update UI after stopping
-    function updateUIAfterStop() {
-        // Update UI
-        toggleButton.textContent = 'Start Posting';
-        toggleButton.className = '';
-        statusDiv.textContent = 'Status: Inactive';
+    // Validate that we have at least one message
+    if (messages.length === 0) {
+        statusDiv.textContent = 'Error: Please add at least one message';
         statusDiv.className = 'status inactive';
-        
-        // Remove from storage
-        chrome.storage.local.get('activeTabs', function(data) {
-            const activeTabs = data.activeTabs || {};
-            
-            if (activeTabs[currentTabId]) {
-                delete activeTabs[currentTabId];
-                chrome.storage.local.set({activeTabs: activeTabs}, function() {
-                    // Update active tabs list
-                    updateActiveTabsList();
-                });
-            }
-        });
+        return;
     }
     
-    // Function to update the active tabs list
-    function updateActiveTabsList() {
-        chrome.storage.local.get('activeTabs', function(data) {
-            const activeTabs = data.activeTabs || {};
-            const activeTabsList = document.getElementById('activeTabsList');
+    // Save current settings
+    chrome.storage.local.set({
+        defaultInterval: document.querySelector('.interval-input').value,
+        defaultSelector: document.querySelector('.chat-selector').value || '#chat-input-wrapper > div > div.editor-input > p'
+    });
+    
+    // First ensure content script is loaded
+    chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+        chrome.scripting.executeScript({
+            target: {tabId: tabs[0].id},
+            files: ['content.js']
+        }).then(() => {
+            console.log('Content script injected for testing input');
             
-            // Clear current list
-            activeTabsList.innerHTML = '';
-            
-            // Check if we have any active tabs
-            const tabIds = Object.keys(activeTabs);
-            if (tabIds.length === 0) {
-                activeTabsList.textContent = 'No active streams';
-                return;
-            }
-            
-            // Add each active tab to the list
-            tabIds.forEach(tabId => {
-                const tabInfo = activeTabs[tabId];
-                
-                const tabItem = document.createElement('div');
-                tabItem.className = 'active-tab-item';
-                
-                const tabTitle = document.createElement('span');
-                tabTitle.textContent = tabInfo.title || 'Unknown Stream';
-                
-                const switchButton = document.createElement('button');
-                switchButton.textContent = 'Switch';
-                switchButton.addEventListener('click', function() {
-                    chrome.tabs.update(parseInt(tabId), {active: true});
+            // Now test the input
+            setTimeout(() => {
+                chrome.tabs.sendMessage(tabs[0].id, {
+                    action: 'testInput',
+                    messages: messages,
+                    chatSelector: document.querySelector('.chat-selector').value || '#input', // Try YouTube's selector first
+                    enableNotifications: enableNotificationsCheckbox.checked, // Pass notification preference
+                    llmSettings: {
+                        provider: llmProviderSelect.value,
+                        apiKey: apiKeyInput.value,
+                        context: contextPromptInput.value
+                    }
+                }, function(response) {
+                    if (chrome.runtime.lastError) {
+                        statusDiv.textContent = 'Error: ' + chrome.runtime.lastError.message;
+                        statusDiv.className = 'status inactive';
+                    } else if (response && response.success) {
+                        statusDiv.textContent = 'Test: Input field found and populated!';
+                        statusDiv.className = 'status active';
+                    } else {
+                        statusDiv.textContent = 'Test: Failed to find input field!';
+                        statusDiv.className = 'status inactive';
+                    }
+                    
+                    // Reset status after 3 seconds
+                    setTimeout(() => {
+                        chrome.storage.local.get('activeTabs', function(data) {
+                            const isActive = data.activeTabs && data.activeTabs[currentTabId];
+                            if (isActive) {
+                                statusDiv.textContent = 'Status: Active';
+                                statusDiv.className = 'status active';
+                            } else {
+                                statusDiv.textContent = 'Status: Inactive';
+                                statusDiv.className = 'status inactive';
+                            }
+                        });
+                    }, 3000);
                 });
-                
-                tabItem.appendChild(tabTitle);
-                tabItem.appendChild(switchButton);
-                activeTabsList.appendChild(tabItem);
-            });
+            }, 500); // Add delay to ensure content script is loaded
+        }).catch(err => {
+            console.error('Failed to inject content script for testing input:', err);
+            statusDiv.textContent = 'Error injecting content script: ' + err.message;
+            statusDiv.className = 'status inactive';
         });
-    }
-});  
+    });
+});
