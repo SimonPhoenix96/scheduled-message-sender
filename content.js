@@ -300,17 +300,16 @@ function setTextAndSend(message, selector, shouldSend = true) {
 }
 
 // Function to post a message
-// Function to post a message
 async function postDonationMessage(message, selector, shouldSend = true, showNotification = true, useLLM = false) {
   console.log('Posting message with selector:', selector, 'useLLM:', useLLM);
   
-  // If using LLM and message is empty or explicitly requested, generate a message
+  // If using LLM, generate a message
   if (useLLM) {
     console.log('Generating message using LLM');
     try {
       // Find the message data that matches this request
       const messageInfo = messageData.find(msg => 
-        msg.text === message && 
+        (message === "" || msg.text === message) && 
         msg.selector === selector && 
         msg.useLLM === useLLM
       );
@@ -325,13 +324,16 @@ async function postDonationMessage(message, selector, shouldSend = true, showNot
       console.log('Using provider:', messageProvider, 'and model:', messageModel);
       console.log('Original message text:', message);
       
+      // Use the original message from messageInfo if our message is empty
+      const originalMessageToUse = message || messageInfo?.text || "";
+      
       const response = await new Promise((resolve, reject) => {
         chrome.runtime.sendMessage({
           action: 'getNewMessage',
           context: messageContext,
           provider: messageProvider,
           model: messageModel,
-          originalMessage: message // Pass the original message
+          originalMessage: originalMessageToUse
         }, function(response) {
           if (chrome.runtime.lastError) {
             reject(chrome.runtime.lastError);
@@ -426,7 +428,6 @@ if (intervalType === 'random') {
 const selector = messageObj.selector || defaultSelector;
 
 // Create interval for this message
-// Create interval for this message
 let id;
 if (intervalType === 'random') {
   // For random intervals, use a recursive setTimeout approach
@@ -438,13 +439,26 @@ if (intervalType === 'random') {
     
     console.log('Scheduling random message in', randomMs/1000, 'seconds');
     
-    // Post immediately on first run
-    postDonationMessage(messageObj.text, selector, true, true, messageObj.useLLM);
-    
+      // Post immediately on first run
+      if (messageObj.useLLM) {
+        // For LLM messages, wait for generation before posting
+        console.log('Waiting for LLM to generate message before first post');
+        // Don't post immediately - the first scheduled post will happen after the random interval
+      } else {
+        // For regular messages, post immediately
+        postDonationMessage(messageObj.text, selector, true, true, false);
+      } 
     // Schedule next post
     const timeoutId = setTimeout(() => {
       // Post and schedule next
-      postDonationMessage(messageObj.text, selector, true, true, messageObj.useLLM);
+      if (messageObj.useLLM) {
+        // For LLM messages, we need to generate a new message each time
+        // Pass an empty string as the message to force generation
+        postDonationMessage("", selector, true, true, true);
+      } else {
+        // For regular messages, use the original text
+        postDonationMessage(messageObj.text, selector, true, true, false);
+      }
       const nextId = scheduleRandomMessage();
       
       // Replace the old ID with the new one in our tracking array
@@ -464,14 +478,31 @@ if (intervalType === 'random') {
 } else {
   // Regular interval (minutes or seconds)
   id = setInterval(() => {
-    postDonationMessage(messageObj.text, selector, true, true, messageObj.useLLM);
+    if (messageObj.useLLM) {
+      // For LLM messages, we need to generate a new message each time
+      // Pass an empty string as the message to force generation
+      postDonationMessage("", selector, true, true, true);
+    } else {
+      // For regular messages, use the original text
+      postDonationMessage(messageObj.text, selector, true, true, false);
+    }
   }, intervalMs);
   
   // Store the interval ID
   intervalIds.push(id);
   
   // Post immediately on first run
-  postDonationMessage(messageObj.text, selector, true, true, messageObj.useLLM);
+  if (messageObj.useLLM) {
+    // For LLM messages, wait for generation before posting
+    console.log('Waiting for LLM to generate message before first post');
+    // Schedule the first post after a short delay to allow for generation
+    setTimeout(() => {
+      postDonationMessage("", selector, true, true, true);
+    }, 500);
+  } else {
+    // For regular messages, post immediately
+    postDonationMessage(messageObj.text, selector, true, true, false);
+  }
 }
 
 // Store message data
