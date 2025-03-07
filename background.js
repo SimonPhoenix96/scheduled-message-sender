@@ -116,42 +116,43 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
 
 
 
-    if (request.action === 'getNewMessage') {
-      console.log('Received request to generate new message');
+  if (request.action === 'getNewMessage') {
+    console.log('Received request to generate new message');
+    
+    // Get provider and model from request or use defaults
+    const provider = request.provider || 'openai';
+    const model = request.model || '';
+    const originalMessage = request.originalMessage || '';
+    
+    // Get API key for the provider
+    chrome.storage.local.get([provider + 'Key'], function(data) {
+      const apiKey = data[provider + 'Key'];
       
-      // Get provider and model from request or use defaults
-      const provider = request.provider || 'openai';
-      const model = request.model || '';
+      if (!apiKey) {
+        console.error('No API key found for provider:', provider);
+        sendResponse({
+          error: 'No API key found for ' + provider,
+          fallbackMessage: originalMessage || 'Hello! Thanks for watching the stream!'
+        });
+        return;
+      }
       
-      // Get API key for the provider
-      chrome.storage.local.get([provider + 'Key'], function(data) {
-        const apiKey = data[provider + 'Key'];
-        
-        if (!apiKey) {
-          console.error('No API key found for provider:', provider);
+      // Generate message using the specified provider, model, context and original message
+      generateMessage(provider, apiKey, request.context || '', model, originalMessage)
+        .then(message => {
+          sendResponse({message: message});
+        })
+        .catch(error => {
+          console.error('Error generating message:', error);
           sendResponse({
-            error: 'No API key found for ' + provider,
-            fallbackMessage: 'Hello! Thanks for watching the stream!'
+            error: error.message,
+            fallbackMessage: originalMessage || 'Hello! Thanks for watching the stream!'
           });
-          return;
-        }
-        
-        // Generate message using the specified provider, model and context
-        generateMessage(provider, apiKey, request.context || '', model)
-          .then(message => {
-            sendResponse({message: message});
-          })
-          .catch(error => {
-            console.error('Error generating message:', error);
-            sendResponse({
-              error: error.message,
-              fallbackMessage: 'Hello! Thanks for watching the stream!'
-            });
-          });
-      });
-      
-      return true; // Keep the message channel open for async response
-    }else if (request.action === 'getNewMessage') {
+        });
+    });
+    
+    return true; // Keep the message channel open for async response
+  }else if (request.action === 'getNewMessage') {
       const tabId = sender.tab.id;
       
       chrome.storage.local.get(['activeTabs', 'openaiKey', 'openrouterKey', 'contextPrompt'], function(data) {
@@ -280,93 +281,104 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
   
   // Function to generate messages using LLM APIs
 // Function to generate messages using LLM APIs
-async function generateMessage(provider, apiKey, context, model = '') {
-    try {
-      let apiUrl, requestBody, headers;
-      
-      // Prepare the prompt
-      const prompt = `Generate a unique, friendly, and engaging message for a live stream chat. 
-  Context about the stream: ${context || "This is a general live stream"}
-  
-  The message should:
-  1. Be conversational and natural
-  2. Be between 1-3 sentences
-  3. Be relevant to the stream context
-  4. Be friendly and positive
-  5. Not be repetitive if used multiple times
-  
-  Generate only the message text without any additional formatting or explanation.`;
-      
-      if (provider === 'openai') {
-        apiUrl = 'https://api.openai.com/v1/chat/completions';
-        headers = {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        };
-        requestBody = {
-          model: model || 'gpt-3.5-turbo',
-          messages: [
-            {
-              role: 'system',
-              content: 'You are a helpful assistant that generates friendly chat messages for streamers.'
-            },
-            {
-              role: 'user',
-              content: prompt
-            }
-          ],
-          max_tokens: 150,
-          temperature: 0.7
-        };
-      } else if (provider === 'openrouter') {
-        apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
-        headers = {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
-          'HTTP-Referer': 'https://scheduled-message-sender.extension'
-        };
-        requestBody = {
-          model: model || 'openai/gpt-3.5-turbo',
-          messages: [
-            {
-              role: 'system',
-              content: 'You are a helpful assistant that generates friendly chat messages for streamers.'
-            },
-            {
-              role: 'user',
-              content: prompt
-            }
-          ],
-          max_tokens: 150,
-          temperature: 0.7
-        };
+async function generateMessage(provider, apiKey, context, model = '', originalMessage = '') {
+  try {
+    let apiUrl, requestBody, headers;
+    
+    // Construct a prompt that includes both the context and original message if provided
+    let prompt;
+    if (originalMessage && originalMessage.trim() !== '') {
+      // If we have both context and original message, combine them
+      if (context && context.trim() !== '') {
+        prompt = `${context}\n\nOriginal message: ${originalMessage}\n\nGenerate a message based on the above context and original message.`;
       } else {
-        throw new Error('Unsupported provider');
+        // If we only have original message, use it as guidance
+        prompt = `Generate a unique, friendly, and engaging message for a live stream chat based on this guidance: ${originalMessage}`;
       }
+    } else {
+      // If no original message, use context directly or fall back to default
+      prompt = context || `Generate a unique, friendly, and engaging message for a live stream chat. 
+      This is a general live stream.
       
-      // Make the API request
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: headers,
-        body: JSON.stringify(requestBody)
-      });
+      The message should:
+      1. Be conversational and natural
+      2. Be between 1-3 sentences
+      3. Be friendly and positive
+      4. Not be repetitive if used multiple times
       
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(`API request failed: ${response.status} ${errorData.error?.message || response.statusText}`);
-      }
-      
-      const data = await response.json();
-      
-      // Extract the generated message
-      let generatedMessage;
-      if (provider === 'openai' || provider === 'openrouter') {
-        generatedMessage = data.choices[0].message.content.trim();
-      }
-      
-      return generatedMessage;
-    } catch (error) {
-      console.error('Error generating message:', error);
-      throw error;
+      Generate only the message text without any additional formatting or explanation.`;
     }
+    
+    if (provider === 'openai') {
+      apiUrl = 'https://api.openai.com/v1/chat/completions';
+      headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      };
+      requestBody = {
+        model: model || 'gpt-3.5-turbo',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a helpful assistant that generates friendly chat messages for streamers.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        max_tokens: 150,
+        temperature: 0.7
+      };
+    } else if (provider === 'openrouter') {
+      apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
+      headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+        'HTTP-Referer': 'https://scheduled-message-sender.extension'
+      };
+      requestBody = {
+        model: model || 'openai/gpt-3.5-turbo',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a helpful assistant that generates friendly chat messages for streamers.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        max_tokens: 150,
+        temperature: 0.7
+      };
+    } else {
+      throw new Error('Unsupported provider');
+    }
+    
+    // Make the API request
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify(requestBody)
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(`API request failed: ${response.status} ${errorData.error?.message || response.statusText}`);
+    }
+    
+    const data = await response.json();
+    
+    // Extract the generated message
+    let generatedMessage;
+    if (provider === 'openai' || provider === 'openrouter') {
+      generatedMessage = data.choices[0].message.content.trim();
+    }
+    
+    return generatedMessage;
+  } catch (error) {
+    console.error('Error generating message:', error);
+    throw error;
   }
+}

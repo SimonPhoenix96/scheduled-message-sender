@@ -300,76 +300,79 @@ function setTextAndSend(message, selector, shouldSend = true) {
 }
 
 // Function to post a message
+// Function to post a message
 async function postDonationMessage(message, selector, shouldSend = true, showNotification = true, useLLM = false) {
-    console.log('Posting message with selector:', selector, 'useLLM:', useLLM);
-    
-    // If using LLM and message is empty or explicitly requested, generate a message
-    if (useLLM) {
-      console.log('Generating message using LLM');
-      try {
-        // Find the message data that matches this request
-        const messageInfo = messageData.find(msg => 
-          msg.text === message && 
-          msg.selector === selector && 
-          msg.useLLM === useLLM
-        );
-        
-        // Get message-specific context if available
-        const messageContext = messageInfo?.context || '';
-        // Get message-specific provider and model if available
-        const messageProvider = messageInfo?.provider || currentLLMSettings?.provider || 'openai';
-        const messageModel = messageInfo?.model || '';
-        
-        console.log('Using message-specific context:', messageContext);
-        console.log('Using provider:', messageProvider, 'and model:', messageModel);
-        
-        const response = await new Promise((resolve, reject) => {
-          chrome.runtime.sendMessage({
-            action: 'getNewMessage',
-            context: messageContext,
-            provider: messageProvider,
-            model: messageModel
-          }, function(response) {
-            if (chrome.runtime.lastError) {
-              reject(chrome.runtime.lastError);
-            } else {
-              resolve(response);
-            }
-          });
+  console.log('Posting message with selector:', selector, 'useLLM:', useLLM);
+  
+  // If using LLM and message is empty or explicitly requested, generate a message
+  if (useLLM) {
+    console.log('Generating message using LLM');
+    try {
+      // Find the message data that matches this request
+      const messageInfo = messageData.find(msg => 
+        msg.text === message && 
+        msg.selector === selector && 
+        msg.useLLM === useLLM
+      );
+      
+      // Get message-specific context if available
+      const messageContext = messageInfo?.context || '';
+      // Get message-specific provider and model if available
+      const messageProvider = messageInfo?.provider || currentLLMSettings?.provider || 'openai';
+      const messageModel = messageInfo?.model || '';
+      
+      console.log('Using message-specific context:', messageContext);
+      console.log('Using provider:', messageProvider, 'and model:', messageModel);
+      console.log('Original message text:', message);
+      
+      const response = await new Promise((resolve, reject) => {
+        chrome.runtime.sendMessage({
+          action: 'getNewMessage',
+          context: messageContext,
+          provider: messageProvider,
+          model: messageModel,
+          originalMessage: message // Pass the original message
+        }, function(response) {
+          if (chrome.runtime.lastError) {
+            reject(chrome.runtime.lastError);
+          } else {
+            resolve(response);
+          }
         });
-        
-        if (response.message) {
-          message = response.message;
-          console.log('Generated message:', message);
-        } else if (response.fallbackMessage) {
-          message = response.fallbackMessage;
-          console.log('Using fallback message:', message);
-        } else {
-          console.error('Failed to generate message:', response.error);
-          return false;
-        }
-      } catch (error) {
-        console.error('Error getting generated message:', error);
+      });
+      
+      if (response.message) {
+        message = response.message;
+        console.log('Generated message:', message);
+      } else if (response.fallbackMessage) {
+        message = response.fallbackMessage;
+        console.log('Using fallback message:', message);
+      } else {
+        console.error('Failed to generate message:', response.error);
         return false;
       }
-    }
-    
-    // If message is still empty, don't proceed
-    if (!message || message.trim() === '') {
-      console.error('No message to post');
+    } catch (error) {
+      console.error('Error getting generated message:', error);
       return false;
     }
-    
-    const success = setTextAndSend(message, selector, shouldSend);
-    if (success && shouldSend && showNotification) {
-      // Send notification for successful message post
-      chrome.runtime.sendMessage({
-        action: 'showNotification',
-        title: 'Message Posted',
-        message: message.length > 50 ? message.substring(0, 47) + '...' : message
-      });
-    }
-    return success;
+  }
+  
+  // If message is still empty, don't proceed
+  if (!message || message.trim() === '') {
+    console.error('No message to post');
+    return false;
+  }
+  
+  const success = setTextAndSend(message, selector, shouldSend);
+  if (success && shouldSend && showNotification) {
+    // Send notification for successful message post
+    chrome.runtime.sendMessage({
+      action: 'showNotification',
+      title: 'Message Posted',
+      message: message.length > 50 ? message.substring(0, 47) + '...' : message
+    });
+  }
+  return success;
 }
 
 // Listen for messages from popup or background
