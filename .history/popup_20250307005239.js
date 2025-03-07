@@ -955,52 +955,44 @@ function startPosting() {
         });
         
           // Function to test API keys
-          function testApiKey(provider, apiKey) {
-            if (!apiKey || apiKey.trim() === '') {
-              statusDiv.textContent = `Please enter a ${provider} API key first`;
-              statusDiv.className = 'status inactive';
-              return;
-            }
-            
-            // Show testing status
-            statusDiv.textContent = `Testing ${provider} API key...`;
-            statusDiv.className = 'status active';
-            
-            // Send message to background script to test the key
-            chrome.runtime.sendMessage({
-              action: 'testApiKey',
-              provider: provider,
-              apiKey: apiKey
-            }, function(response) {
-              if (chrome.runtime.lastError) {
-                statusDiv.textContent = `Error: ${chrome.runtime.lastError.message}`;
-                statusDiv.className = 'status inactive';
-                return;
-              }
-              
-              if (response.success) {
-                statusDiv.textContent = `${provider} API key is valid!`;
-                statusDiv.className = 'status active';
-              } else {
-                statusDiv.textContent = `${provider} API key error: ${response.error}`;
-                statusDiv.className = 'status inactive';
-              }
-              
-              // Reset status after 5 seconds
-              setTimeout(() => {
-                chrome.storage.local.get('activeTabs', function(data) {
-                  const isActive = data.activeTabs && data.activeTabs[currentTabId];
-                  if (isActive) {
-                    statusDiv.textContent = 'Status: Active';
-                    statusDiv.className = 'status active';
-                  } else {
-                    statusDiv.textContent = 'Status: Inactive';
-                    statusDiv.className = 'status inactive';
-                  }
-                });
-              }, 5000);
-            });
-          }
+  function testApiKey(provider, apiKey) {
+    if (!apiKey || apiKey.trim() === '') {
+      statusDiv.textContent = `Please enter a ${provider} API key first`;
+      statusDiv.className = 'status inactive';
+      return;
+    }
+    
+    // Show testing status
+    statusDiv.textContent = `Testing ${provider} API key...`;
+    statusDiv.className = 'status active';
+    
+    // Send message to background script to test the key
+    chrome.runtime.sendMessage({
+      action: 'testApiKey',
+      provider: provider,
+      apiKey: apiKey
+    }, function(response) {
+      if (chrome.runtime.lastError) {
+        statusDiv.textContent = `Error: ${chrome.runtime.lastError.message}`;
+        statusDiv.className = 'status inactive';
+        return;
+      }
+      
+      if (response.success) {
+        statusDiv.textContent = `${provider} API key is valid!`;
+        statusDiv.className = 'status active';
+      } else {
+        statusDiv.textContent = `${provider} API key error: ${response.error}`;
+        statusDiv.className = 'status inactive';
+      }
+      
+      // Reset status after 5 seconds
+      setTimeout(() => {
+        statusDiv.textContent = 'Settings';
+        statusDiv.className = 'status';
+      }, 5000);
+    });
+  }
     
     // Function to stop posting messages
     function stopPosting() {

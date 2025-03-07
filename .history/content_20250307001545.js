@@ -423,69 +423,86 @@ if (intervalType === 'random') {
 const selector = messageObj.selector || defaultSelector;
 
 // Create interval for this message
-// Create interval for this message
-let id;
-if (intervalType === 'random') {
-  // For random intervals, use a recursive setTimeout approach
-  const scheduleRandomMessage = () => {
-    // Calculate random time for next post
-    const minMs = (messageObj.minInterval || 30) * 1000;
-    const maxMs = (messageObj.maxInterval || 120) * 1000;
-    const randomMs = Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs;
+const id = setInterval(() => {
+  // For random intervals, we need to recalculate the interval after each post
+  if (intervalType === 'random') {
+    clearInterval(id); // Clear the current interval
     
-    console.log('Scheduling random message in', randomMs/1000, 'seconds');
-    
-    // Post immediately on first run
+    // Post the message
     postDonationMessage(messageObj.text, selector, true, true, messageObj.useLLM);
     
-    // Schedule next post
-    const timeoutId = setTimeout(() => {
-      // Post and schedule next
-      postDonationMessage(messageObj.text, selector, true, true, messageObj.useLLM);
-      const nextId = scheduleRandomMessage();
+    // Set a new timeout with a random interval
+    const newMinMs = (messageObj.minInterval || 30) * 1000;
+    const newMaxMs = (messageObj.maxInterval || 120) * 1000;
+    const newIntervalMs = Math.floor(Math.random() * (newMaxMs - newMinMs + 1)) + newMinMs;
+    
+    // Create a new interval with the random time
+    const newId = setTimeout(() => {
+      const recurringId = setInterval(() => {
+        // For each recurring interval, we'll need to handle random intervals again
+        if (intervalType === 'random') {  // Add opening curly brace here
+          clearInterval(recurringId);
+          postDonationMessage(messageObj.text, selector, true, true, messageObj.useLLM);
+          
+          // Create a new random interval
+          const nextId = setTimeout(() => {
+            // This creates a new interval that replaces the old one
+            const nextRecurringId = setInterval(() => {
+              if (intervalType === 'random') {
+                // Continue the pattern for future intervals
+                clearInterval(nextRecurringId);
+                postDonationMessage(messageObj.text, selector, true, true, messageObj.useLLM);
+                // ... and so on (this creates a recursive pattern)
+              } else {
+                postDonationMessage(messageObj.text, selector, true, true, messageObj.useLLM);
+              }
+            }, intervalMs);
+            
+            // Update the interval ID in our tracking array
+            const oldIdIndex = intervalIds.indexOf(recurringId);
+            if (oldIdIndex !== -1) {
+              intervalIds[oldIdIndex] = nextRecurringId;
+            }
+          }, Math.floor(Math.random() * (newMaxMs - newMinMs + 1)) + newMinMs);
+          
+          intervalIds.push(nextId);
+        } else {
+          postDonationMessage(messageObj.text, selector, true, true, messageObj.useLLM);
+        }
       
-      // Replace the old ID with the new one in our tracking array
-      const oldIdIndex = intervalIds.indexOf(timeoutId);
+      // Replace the old interval ID with the new one
+      const oldIdIndex = intervalIds.indexOf(id);
       if (oldIdIndex !== -1) {
-        intervalIds[oldIdIndex] = nextId;
+        intervalIds[oldIdIndex] = recurringId;
+      } else {
+        intervalIds.push(recurringId);
       }
-    }, randomMs);
+    }, newIntervalMs);
     
     // Store the timeout ID
-    intervalIds.push(timeoutId);
-    return timeoutId;
-  };
-  
-  // Start the recursive scheduling
-  id = scheduleRandomMessage();
-} else {
-  // Regular interval (minutes or seconds)
-  id = setInterval(() => {
+    intervalIds.push(newId);
+  } else {
+    // Regular interval, just post the message
     postDonationMessage(messageObj.text, selector, true, true, messageObj.useLLM);
-  }, intervalMs);
-  
-  // Store the interval ID
-  intervalIds.push(id);
-  
-  // Post immediately on first run
-  postDonationMessage(messageObj.text, selector, true, true, messageObj.useLLM);
-}
-
+  }
+}, intervalMs);
+          
+          // Store the interval ID
+          intervalIds.push(id);
+          
 // Store message data
 messageData.push({
-  text: messageObj.text,
-  selector: selector,
-  interval: messageObj.interval,
-  intervalType: messageObj.intervalType || 'minutes',
-  minInterval: messageObj.minInterval || 30,
-  maxInterval: messageObj.maxInterval || 120,
-  useLLM: messageObj.useLLM,
-  context: messageObj.context || '',
-  provider: messageObj.provider || '',
-  model: messageObj.model || ''
-});
-
-console.log('Interval set for message:', messageObj.text, 'with ID:', id);
+    text: messageObj.text,
+    selector: selector,
+    interval: messageObj.interval,
+    intervalType: messageObj.intervalType || 'minutes',
+    minInterval: messageObj.minInterval || 30,
+    maxInterval: messageObj.maxInterval || 120,
+    useLLM: messageObj.useLLM,
+    context: messageObj.context || '',
+    provider: messageObj.provider || '',
+    model: messageObj.model || ''
+  });
           
           console.log('Interval set for message:', messageObj.text, 'with ID:', id);
         });

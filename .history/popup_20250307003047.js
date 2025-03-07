@@ -872,135 +872,113 @@ function updateModelOptions(modelSelect, provider) {
     }
     
     // Function to start posting messages
-// Function to start posting messages
-function startPosting() {
-  // Get all messages
-  const messages = getAllMessages();
-  
-  // Validate that we have at least one message
-  if (messages.length === 0) {
-      statusDiv.textContent = 'Error: Please add at least one message';
+    function startPosting() {
+      // Get all messages
+      const messages = getAllMessages();
+      
+      // Validate that we have at least one message
+      if (messages.length === 0) {
+          statusDiv.textContent = 'Error: Please add at least one message';
+          statusDiv.className = 'status inactive';
+          return;
+      }
+      
+      // Save current settings
+      chrome.storage.local.set({
+          defaultInterval: document.querySelector('.interval-input').value,
+          defaultSelector: document.querySelector('.chat-selector').value || '#chat-input-wrapper > div > div.editor-input > p'
+      });
+      
+      // First ensure content script is loaded
+      chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+          chrome.scripting.executeScript({
+              target: {tabId: tabs[0].id},
+              files: ['content.js']
+          }).then(() => {
+              console.log('Content script injected');
+              
+              // Now start the posting
+              setTimeout(() => {
+                  chrome.tabs.sendMessage(tabs[0].id, {
+                      action: 'start',
+                      messages: messages,
+                      chatSelector: document.querySelector('.chat-selector').value,
+                      enableNotifications: enableNotificationsCheckbox.checked,
+                      llmSettings: {
+                          provider: llmProviderSelect.value,
+                          apiKey: apiKeyInput.value,
+                          context: contextPromptInput.value
+                      }
+                  }, function(response) {
+                        if (chrome.runtime.lastError) {
+                            statusDiv.textContent = 'Error: ' + chrome.runtime.lastError.message;
+                            statusDiv.className = 'status inactive';
+                        } else if (response && response.success) {
+                            // Update UI
+                            toggleButton.textContent = 'Stop Posting';
+                            toggleButton.className = 'stop';
+                            statusDiv.textContent = 'Status: Active';
+                            statusDiv.className = 'status active';
+                            
+                            // Save to storage
+                            saveAllMessages();
+                            
+                            // Update active tabs list
+                            updateActiveTabsList();
+                        } else {
+                            statusDiv.textContent = 'Error: Failed to start posting';
+                            statusDiv.className = 'status inactive';
+                        }
+                      });
+                    }, 500);
+                }).catch(err => {
+                    console.error('Failed to inject content script:', err);
+                    statusDiv.textContent = 'Error injecting content script: ' + err.message;
+                    statusDiv.className = 'status inactive';
+                });
+            });
+        }
+
+
+          // Function to test API keys
+  function testApiKey(provider, apiKey) {
+    if (!apiKey || apiKey.trim() === '') {
+      statusDiv.textContent = `Please enter a ${provider} API key first`;
       statusDiv.className = 'status inactive';
       return;
+    }
+    
+    // Show testing status
+    statusDiv.textContent = `Testing ${provider} API key...`;
+    statusDiv.className = 'status active';
+    
+    // Send message to background script to test the key
+    chrome.runtime.sendMessage({
+      action: 'testApiKey',
+      provider: provider,
+      apiKey: apiKey
+    }, function(response) {
+      if (chrome.runtime.lastError) {
+        statusDiv.textContent = `Error: ${chrome.runtime.lastError.message}`;
+        statusDiv.className = 'status inactive';
+        return;
+      }
+      
+      if (response.success) {
+        statusDiv.textContent = `${provider} API key is valid!`;
+        statusDiv.className = 'status active';
+      } else {
+        statusDiv.textContent = `${provider} API key error: ${response.error}`;
+        statusDiv.className = 'status inactive';
+      }
+      
+      // Reset status after 5 seconds
+      setTimeout(() => {
+        statusDiv.textContent = 'Settings';
+        statusDiv.className = 'status';
+      }, 5000);
+    });
   }
-  
-  // Save current settings
-  chrome.storage.local.set({
-      defaultInterval: document.querySelector('.interval-input').value,
-      defaultSelector: document.querySelector('.chat-selector').value || '#chat-input-wrapper > div > div.editor-input > p'
-  });
-  
-  // First ensure content script is loaded
-  chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
-      chrome.scripting.executeScript({
-          target: {tabId: tabs[0].id},
-          files: ['content.js']
-      }).then(() => {
-          console.log('Content script injected');
-          
-          // Now start the posting
-          setTimeout(() => {
-              chrome.tabs.sendMessage(tabs[0].id, {
-                  action: 'start',
-                  messages: messages,
-                  chatSelector: document.querySelector('.chat-selector').value,
-                  enableNotifications: enableNotificationsCheckbox.checked,
-                  llmSettings: {
-                      provider: llmProviderSelect.value,
-                      apiKey: apiKeyInput.value,
-                      context: contextPromptInput.value
-                  }
-              }, function(response) {
-                    if (chrome.runtime.lastError) {
-                        statusDiv.textContent = 'Error: ' + chrome.runtime.lastError.message;
-                        statusDiv.className = 'status inactive';
-                    } else if (response && response.success) {
-                        // Update UI
-                        toggleButton.textContent = 'Stop Posting';
-                        toggleButton.className = 'stop';
-                        statusDiv.textContent = 'Status: Active';
-                        statusDiv.className = 'status active';
-                        
-                        // Save to storage
-                        saveAllMessages();
-                        
-                        // Update active tabs list
-                        updateActiveTabsList();
-                    } else {
-                        statusDiv.textContent = 'Error: Failed to start posting';
-                        statusDiv.className = 'status inactive';
-                    }
-                  });
-                }, 500);
-            }).catch(err => {
-                console.error('Failed to inject content script:', err);
-                statusDiv.textContent = 'Error injecting content script: ' + err.message;
-                statusDiv.className = 'status inactive';
-            });
-  }); // Added the missing closing parenthesis here
-}
-
-        const testOpenaiKeyBtn = document.getElementById('testOpenaiKey');
-        const testOpenrouterKeyBtn = document.getElementById('testOpenrouterKey');
-        
-        // Add event listeners for the test buttons
-        testOpenaiKeyBtn.addEventListener('click', function() {
-          console.log('Testing OpenAI key:', openaiKeyInput.value.substring(0, 5) + '...');
-          testApiKey('openai', openaiKeyInput.value);
-        });
-        
-        testOpenrouterKeyBtn.addEventListener('click', function() {
-          console.log('Testing OpenRouter key:', openrouterKeyInput.value.substring(0, 5) + '...');
-          testApiKey('openrouter', openrouterKeyInput.value);
-        });
-        
-          // Function to test API keys
-          function testApiKey(provider, apiKey) {
-            if (!apiKey || apiKey.trim() === '') {
-              statusDiv.textContent = `Please enter a ${provider} API key first`;
-              statusDiv.className = 'status inactive';
-              return;
-            }
-            
-            // Show testing status
-            statusDiv.textContent = `Testing ${provider} API key...`;
-            statusDiv.className = 'status active';
-            
-            // Send message to background script to test the key
-            chrome.runtime.sendMessage({
-              action: 'testApiKey',
-              provider: provider,
-              apiKey: apiKey
-            }, function(response) {
-              if (chrome.runtime.lastError) {
-                statusDiv.textContent = `Error: ${chrome.runtime.lastError.message}`;
-                statusDiv.className = 'status inactive';
-                return;
-              }
-              
-              if (response.success) {
-                statusDiv.textContent = `${provider} API key is valid!`;
-                statusDiv.className = 'status active';
-              } else {
-                statusDiv.textContent = `${provider} API key error: ${response.error}`;
-                statusDiv.className = 'status inactive';
-              }
-              
-              // Reset status after 5 seconds
-              setTimeout(() => {
-                chrome.storage.local.get('activeTabs', function(data) {
-                  const isActive = data.activeTabs && data.activeTabs[currentTabId];
-                  if (isActive) {
-                    statusDiv.textContent = 'Status: Active';
-                    statusDiv.className = 'status active';
-                  } else {
-                    statusDiv.textContent = 'Status: Inactive';
-                    statusDiv.className = 'status inactive';
-                  }
-                });
-              }, 5000);
-            });
-          }
     
     // Function to stop posting messages
     function stopPosting() {
