@@ -95,6 +95,27 @@ chrome.runtime.onInstalled.addListener(function() {
   
   // Handle message generation requests
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
+
+
+
+  if (request.action === 'testApiKey') {
+    console.log('Testing API key for provider:', request.provider);
+    
+    testApiKey(request.provider, request.apiKey)
+      .then(result => {
+        console.log('API key test successful');
+        sendResponse({success: true, message: 'API key is valid'});
+      })
+      .catch(error => {
+        console.error('API key test failed:', error);
+        sendResponse({success: false, error: error.message || 'API request failed'});
+      });
+    
+    return true; // Keep the message channel open for async response
+  }
+
+
+
     if (request.action === 'getNewMessage') {
       console.log('Received request to generate new message');
       
@@ -185,6 +206,77 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
       return true;
     }
   });
+
+
+
+
+  async function testApiKey(provider, apiKey) {
+    let apiUrl, headers, requestBody;
+    
+    if (provider === 'openai') {
+      apiUrl = 'https://api.openai.com/v1/chat/completions';
+      headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      };
+      requestBody = {
+        model: 'gpt-3.5-turbo',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a helpful assistant.'
+          },
+          {
+            role: 'user',
+            content: 'Say hello in one word.'
+          }
+        ],
+        max_tokens: 10
+      };
+    } else if (provider === 'openrouter') {
+      apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
+      headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+        'HTTP-Referer': 'https://scheduled-message-sender.extension'
+      };
+      requestBody = {
+        model: 'openai/gpt-3.5-turbo',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a helpful assistant.'
+          },
+          {
+            role: 'user',
+            content: 'Say hello in one word.'
+          }
+        ],
+        max_tokens: 10
+      };
+    } else {
+      throw new Error('Unsupported provider');
+    }
+    
+    // Make a minimal API request to test the key
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: headers,
+      body: JSON.stringify(requestBody)
+    });
+    console.log("Testing API Key!")
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error?.message || response.statusText || 'API request failed');
+    } else { 
+      console.log("API request was successful!");
+      // Show a notification for successful API key test
+      showNotification(`${provider} API Key Valid`, `Your ${provider} API key was tested successfully!`);
+    }
+    
+    // If we get here, the key is valid
+    return true;
+  }
   
   // Function to generate messages using LLM APIs
 // Function to generate messages using LLM APIs
