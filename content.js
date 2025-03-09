@@ -250,10 +250,12 @@ function setTextAndSend(message, selector, shouldSend = true) {
     }
   }
   
-  // If we successfully set the text and should send
-  if (success && shouldSend) {
-    console.log('Text set successfully, attempting to send');
-    
+// If we successfully set the text and should send
+if (success && shouldSend) {
+  console.log('Text set successfully, attempting to send');
+  
+  // Add a small delay before sending
+  setTimeout(() => {
     // Try to find and click the send button
     const sendButtonSelectors = [
       'button[type="submit"]',
@@ -264,6 +266,8 @@ function setTextAndSend(message, selector, shouldSend = true) {
       'button.chat-input-send-button',
       'button[aria-label="Send"]',
       'button[aria-label="Send message"]',
+      'button.ytd-live-chat-frame', // YouTube specific
+      'button#send-button', // Common ID
       selector + ' + button',
       selector + ' ~ button'
     ];
@@ -282,9 +286,11 @@ function setTextAndSend(message, selector, shouldSend = true) {
       if (buttonFound) break;
     }
     
-    // If no button found, try pressing Enter
+    // If no button found, try multiple methods to press Enter
     if (!buttonFound) {
-      console.log('No send button found, pressing Enter');
+      console.log('No send button found, trying multiple Enter key methods');
+      
+      // Method 1: KeyboardEvent with keyCode (older approach)
       element.dispatchEvent(new KeyboardEvent('keydown', {
         key: 'Enter',
         code: 'Enter',
@@ -292,7 +298,40 @@ function setTextAndSend(message, selector, shouldSend = true) {
         which: 13,
         bubbles: true
       }));
+      
+      // Method 2: KeyboardEvent with key property (modern approach)
+      element.dispatchEvent(new KeyboardEvent('keypress', {
+        key: 'Enter',
+        code: 'Enter',
+        bubbles: true,
+        cancelable: true
+      }));
+      
+      // Method 3: Simulate Enter with input event + Enter
+      element.dispatchEvent(new InputEvent('input', {
+        bubbles: true,
+        cancelable: true,
+        inputType: 'insertText'
+      }));
+      element.dispatchEvent(new KeyboardEvent('keydown', {
+        key: 'Enter',
+        bubbles: true,
+        cancelable: true
+      }));
+      
+      // Method 4: Try to trigger form submission if element is in a form
+      const form = element.closest('form');
+      if (form) {
+        console.log('Found parent form, attempting to submit');
+        form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+        try {
+          form.submit();
+        } catch (e) {
+          console.log('Form submit error:', e);
+        }
+      }
     }
+  }, 300); // 300ms delay before sending
   }
 
     
@@ -315,17 +354,19 @@ async function postDonationMessage(message, selector, shouldSend = true, showNot
       );
       
       // Get message-specific context if available
-      const messageContext = messageInfo?.context || '';
+      const messageContext = messageInfo && messageInfo.context ? messageInfo.context : '';
       // Get message-specific provider and model if available
-      const messageProvider = messageInfo?.provider || currentLLMSettings?.provider || 'openai';
-      const messageModel = messageInfo?.model || '';
+      const messageProvider = (messageInfo && messageInfo.provider) ? messageInfo.provider : 
+                        (currentLLMSettings && currentLLMSettings.provider) ? currentLLMSettings.provider : 'openai';
+      const messageModel = (messageInfo && messageInfo.model) ? messageInfo.model : '';
+
       
       console.log('Using message-specific context:', messageContext);
       console.log('Using provider:', messageProvider, 'and model:', messageModel);
       console.log('Original message text:', message);
       
       // Use the original message from messageInfo if our message is empty
-      const originalMessageToUse = message || messageInfo?.text || "";
+      const originalMessageToUse = message || (messageInfo && messageInfo.text ? messageInfo.text : "");
       
       const response = await new Promise((resolve, reject) => {
         chrome.runtime.sendMessage({
